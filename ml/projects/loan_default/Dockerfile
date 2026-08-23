@@ -8,4 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir 
+RUN mkdir -p weights artifacts
+
+CMD [ "python","train.py" ]
