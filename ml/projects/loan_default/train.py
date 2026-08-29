@@ -42,6 +42,12 @@ xgb = XGBClassifier(
 )
 xgb.fit(X_train_processed, y_train)
 
+from pathlib import Path
+
+folder_path = Path("weights")
+
+folder_path.mkdir(parents=True, exist_ok=True)
+
 import joblib
 
 joblib.dump(lr, 'weights/lr_model.pkl')
