@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package predict;
+
+option go_package = "driftline/proto/predict;predictpb";
+
+// PredictionService is the internal contract between the Go control plane
+// (client) and the Python ml-service (server). Every prediction goes through it.
+service PredictionService {
+  rpc Predict (PredictionRequest) returns (PredictionResponse);
+  rpc HealthCheck (HealthRequest) returns (HealthResponse);
+}
+
+message PredictionRequest {
+  string model_name = 1;              // e.g. "loan_default_xgb"
+  string model_version = 2;           // e.g. "v1"
+  map<string, double> features = 3;   // encoded feature name -> value (see feature_schema.json)
+  string request_id = 4;              // caller-generated id, echoed back for log correlation
+}
+
+message PredictionResponse {
+  int32 prediction = 1;               // class label (0 = no default, 1 = default)
+  repeated float probabilities = 2;   // per-class probabilities, index == class label
+  string model_version_used = 3;
+  int64 latency_ms = 4;               // server-side inference latency
+  int32 status_code = 5;              // 0 OK, otherwise a google.rpc.Code-style value
+  string error_message = 6;
+  string request_id = 7;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;                  // "SERVING" / "NOT_SERVING"
+  repeated string loaded_models = 2;  // "name/version" currently cached in memory
+}

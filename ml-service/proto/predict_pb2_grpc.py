@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-import inference_pb2 as inference__pb2
+from proto import predict_pb2 as proto_dot_predict__pb2
 
-GRPC_GENERATED_VERSION = '1.83.1'
+GRPC_GENERATED_VERSION = '1.84.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,15 +18,17 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in inference_pb2_grpc.py depends on'
+        + ' but the generated code in proto/predict_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class InferenceServiceStub:
-    """Missing associated documentation comment in .proto file."""
+class PredictionServiceStub:
+    """PredictionService is the internal contract between the Go control plane
+    (client) and the Python ml-service (server). Every prediction goes through it.
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -35,19 +37,21 @@ class InferenceServiceStub:
             channel: A grpc.Channel.
         """
         self.Predict = channel.unary_unary(
-                '/inference.InferenceService/Predict',
-                request_serializer=inference__pb2.PredictRequest.SerializeToString,
-                response_deserializer=inference__pb2.PredictResponse.FromString,
+                '/predict.PredictionService/Predict',
+                request_serializer=proto_dot_predict__pb2.PredictionRequest.SerializeToString,
+                response_deserializer=proto_dot_predict__pb2.PredictionResponse.FromString,
                 _registered_method=True)
         self.HealthCheck = channel.unary_unary(
-                '/inference.InferenceService/HealthCheck',
-                request_serializer=inference__pb2.HealthRequest.SerializeToString,
-                response_deserializer=inference__pb2.HealthResponse.FromString,
+                '/predict.PredictionService/HealthCheck',
+                request_serializer=proto_dot_predict__pb2.HealthRequest.SerializeToString,
+                response_deserializer=proto_dot_predict__pb2.HealthResponse.FromString,
                 _registered_method=True)
 
 
-class InferenceServiceServicer:
-    """Missing associated documentation comment in .proto file."""
+class PredictionServiceServicer:
+    """PredictionService is the internal contract between the Go control plane
+    (client) and the Python ml-service (server). Every prediction goes through it.
+    """
 
     def Predict(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -62,28 +66,30 @@ class InferenceServiceServicer:
         raise NotImplementedError('Method not implemented!')
 
 
-def add_InferenceServiceServicer_to_server(servicer, server):
+def add_PredictionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Predict': grpc.unary_unary_rpc_method_handler(
                     servicer.Predict,
-                    request_deserializer=inference__pb2.PredictRequest.FromString,
-                    response_serializer=inference__pb2.PredictResponse.SerializeToString,
+                    request_deserializer=proto_dot_predict__pb2.PredictionRequest.FromString,
+                    response_serializer=proto_dot_predict__pb2.PredictionResponse.SerializeToString,
             ),
             'HealthCheck': grpc.unary_unary_rpc_method_handler(
                     servicer.HealthCheck,
-                    request_deserializer=inference__pb2.HealthRequest.FromString,
-                    response_serializer=inference__pb2.HealthResponse.SerializeToString,
+                    request_deserializer=proto_dot_predict__pb2.HealthRequest.FromString,
+                    response_serializer=proto_dot_predict__pb2.HealthResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'inference.InferenceService', rpc_method_handlers)
+            'predict.PredictionService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('inference.InferenceService', rpc_method_handlers)
+    server.add_registered_method_handlers('predict.PredictionService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class InferenceService:
-    """Missing associated documentation comment in .proto file."""
+class PredictionService:
+    """PredictionService is the internal contract between the Go control plane
+    (client) and the Python ml-service (server). Every prediction goes through it.
+    """
 
     @staticmethod
     def Predict(request,
@@ -99,9 +105,9 @@ class InferenceService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/inference.InferenceService/Predict',
-            inference__pb2.PredictRequest.SerializeToString,
-            inference__pb2.PredictResponse.FromString,
+            '/predict.PredictionService/Predict',
+            proto_dot_predict__pb2.PredictionRequest.SerializeToString,
+            proto_dot_predict__pb2.PredictionResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -126,9 +132,9 @@ class InferenceService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/inference.InferenceService/HealthCheck',
-            inference__pb2.HealthRequest.SerializeToString,
-            inference__pb2.HealthResponse.FromString,
+            '/predict.PredictionService/HealthCheck',
+            proto_dot_predict__pb2.HealthRequest.SerializeToString,
+            proto_dot_predict__pb2.HealthResponse.FromString,
             options,
             channel_credentials,
             insecure,

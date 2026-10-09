@@ -1,3 +1,14 @@
 .venv
 __pycache__
+*.pyc
 *.pkl
+.pytest_cache
+
+# trained artifacts are rebuilt by ml/ scripts; ml-service/models is the serving copy
+ml/projects/*/weights/
+ml/projects/*/onnx/
+
+# local env / secrets
+.env
+*.exe
+/bin/
