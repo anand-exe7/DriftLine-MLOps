@@ -1,0 +1,6 @@
+.git
+.venv
+**/__pycache__
+ml/projects/*/data
+ml/projects/*/weights
+frontend/node_modules

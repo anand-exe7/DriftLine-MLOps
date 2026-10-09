@@ -124,8 +124,11 @@ When helping with Go code, prefer surfacing these patterns explicitly rather tha
 ## Current Status (update this section as the project progresses)
 
 - [x] ML Day 1: data cleaning, train/test split, Logistic Regression + XGBoost trained and evaluated, models saved locally
-- [ ] ML Day 2: SHAP importance, training baseline stats, ONNX export + verification
-- [ ] Go: repo/proto scaffolding, DB migrations, Model Registry module
+- [x] ML Day 2: SHAP importance, training baseline stats, ONNX export + verification (dataset: Loan Default, not Telco)
+- [x] Go: repo/proto scaffolding, DB migrations, Model Registry module
+- [x] ml-service: Python gRPC PredictionService serving ONNX bundles
+- [x] Go: MinIO storage wrapper, Alert notifiers (Slack/Discord)
+- [ ] docker compose end-to-end run (written, not yet executed)
 - [ ] Go: Deployment Manager, Prediction Proxy + gRPC client
 - [ ] Go: Drift Scheduler + PSI/KS-test implementation
 - [ ] Go: Alert Service, Rollback Manager
