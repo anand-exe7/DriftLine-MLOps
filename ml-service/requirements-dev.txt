@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest
+httpx
+grpcio-tools>=1.84.0

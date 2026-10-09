@@ -1,0 +1,10 @@
+# grpcio/protobuf floors must be >= the versions that generated proto/*.py
+# (see GRPC_GENERATED_VERSION in predict_pb2_grpc.py and the header of predict_pb2.py)
+grpcio>=1.84.0
+protobuf>=7.35.1
+onnxruntime>=1.20
+numpy>=2.0
+fastapi>=0.115
+uvicorn>=0.30
+prometheus_client>=0.20
+minio>=7.2
