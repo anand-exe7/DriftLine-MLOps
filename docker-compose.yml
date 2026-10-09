@@ -75,6 +75,15 @@ services:
       minio: {condition: service_healthy}
       ml-service: {condition: service_healthy}
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        GO_API_URL: http://server:8080
+        ML_SERVICE_URL: http://ml-service:8000
+    ports: ["3000:3000"]
+    depends_on: [server, ml-service]
+
 volumes:
   pgdata:
   miniodata:

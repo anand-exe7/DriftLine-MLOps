@@ -133,9 +133,23 @@ When helping with Go code, prefer surfacing these patterns explicitly rather tha
 - [ ] Go: Drift Scheduler + PSI/KS-test implementation
 - [ ] Go: Alert Service, Rollback Manager
 - [ ] Observability: Prometheus/Grafana/Loki wiring
-- [ ] Frontend dashboard
+- [x] Frontend dashboard (`frontend/`, Next.js): overview, registry, prediction lab, live monitoring, alerts, guide
 - [ ] Retraining loop (closes the self-healing story)
 - [ ] Demo prep: script to inject synthetic drift live
+
+---
+
+## Running it
+
+```bash
+docker compose up -d --build              # postgres, redis, minio, ml-service, Go server, dashboard
+bash scripts/seed_registry.sh             # register the trained v1 models with metrics, SHAP, baseline
+bash scripts/e2e_smoke.sh                 # registry -> MinIO -> ml-service end-to-end check
+```
+
+Dashboard: http://localhost:3000 · Go API: http://localhost:8080 · ml-service: :50051 (gRPC), :8000 (HTTP) · MinIO console: http://localhost:9001
+
+For frontend development: `cd frontend && npm install && npm run dev` (proxies to the compose backends on localhost).
 
 ---
 

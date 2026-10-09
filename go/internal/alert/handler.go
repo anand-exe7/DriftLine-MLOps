@@ -23,10 +23,16 @@ func NewHandler(svc *Service, repo Repository) *Handler {
 // Routes:
 //
 //	GET  /alerts?limit=50   recent alert attempts
+//	GET  /alerts/channels   configured notifier names, e.g. ["slack"]
 //	POST /alerts/test       send a sample drift alert to every configured channel
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/alerts", h.list)
+	r.Get("/alerts/channels", h.channels)
 	r.Post("/alerts/test", h.test)
+}
+
+func (h *Handler) channels(w http.ResponseWriter, r *http.Request) {
+	response.JSON(w, http.StatusOK, map[string]any{"channels": h.svc.Channels()})
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
