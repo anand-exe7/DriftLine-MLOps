@@ -1,0 +1,57 @@
+{
+  "model_name": "loan_default_xgb",
+  "version": "v1",
+  "framework": "xgboost",
+  "input_name": "float_input",
+  "features": [
+    "Age",
+    "Income",
+    "LoanAmount",
+    "CreditScore",
+    "MonthsEmployed",
+    "NumCreditLines",
+    "InterestRate",
+    "LoanTerm",
+    "DTIRatio",
+    "HasMortgage",
+    "HasDependents",
+    "HasCoSigner",
+    "Education_High School",
+    "Education_Master's",
+    "Education_PhD",
+    "EmploymentType_Part-time",
+    "EmploymentType_Self-employed",
+    "EmploymentType_Unemployed",
+    "MaritalStatus_Married",
+    "MaritalStatus_Single",
+    "LoanPurpose_Business",
+    "LoanPurpose_Education",
+    "LoanPurpose_Home",
+    "LoanPurpose_Other"
+  ],
+  "classes": [
+    0,
+    1
+  ],
+  "metrics": {
+    "accuracy": 0.7040532602310554,
+    "precision": 0.23128694329022065,
+    "recall": 0.6663294554038105,
+    "f1": 0.3433834390477018,
+    "roc_auc": 0.7544811384967609,
+    "confusion_matrix": [
+      [
+        32004,
+        13135
+      ],
+      [
+        1979,
+        3952
+      ]
+    ]
+  },
+  "onnx_parity": {
+    "max_abs_prob_diff": 5.364418029785156e-07,
+    "label_agreement": 1.0
+  }
+}

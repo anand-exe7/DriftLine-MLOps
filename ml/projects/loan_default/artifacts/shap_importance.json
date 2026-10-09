@@ -1,0 +1,200 @@
+{
+  "method": "mean(|SHAP|) over held-out sample",
+  "sample_size": 2000,
+  "logistic_regression": [
+    {
+      "feature": "Age",
+      "mean_abs_shap": 0.5004628896713257
+    },
+    {
+      "feature": "InterestRate",
+      "mean_abs_shap": 0.3961881101131439
+    },
+    {
+      "feature": "MonthsEmployed",
+      "mean_abs_shap": 0.29473477602005005
+    },
+    {
+      "feature": "Income",
+      "mean_abs_shap": 0.26903507113456726
+    },
+    {
+      "feature": "LoanAmount",
+      "mean_abs_shap": 0.24964159727096558
+    },
+    {
+      "feature": "EmploymentType_Unemployed",
+      "mean_abs_shap": 0.16564126312732697
+    },
+    {
+      "feature": "HasCoSigner",
+      "mean_abs_shap": 0.12920041382312775
+    },
+    {
+      "feature": "HasDependents",
+      "mean_abs_shap": 0.12606114149093628
+    },
+    {
+      "feature": "CreditScore",
+      "mean_abs_shap": 0.10787592083215714
+    },
+    {
+      "feature": "EmploymentType_Part-time",
+      "mean_abs_shap": 0.10165955126285553
+    },
+    {
+      "feature": "NumCreditLines",
+      "mean_abs_shap": 0.09250131994485855
+    },
+    {
+      "feature": "EmploymentType_Self-employed",
+      "mean_abs_shap": 0.09130170196294785
+    },
+    {
+      "feature": "MaritalStatus_Married",
+      "mean_abs_shap": 0.088595449924469
+    },
+    {
+      "feature": "HasMortgage",
+      "mean_abs_shap": 0.08198146522045135
+    },
+    {
+      "feature": "Education_PhD",
+      "mean_abs_shap": 0.06606956571340561
+    },
+    {
+      "feature": "DTIRatio",
+      "mean_abs_shap": 0.0596916638314724
+    },
+    {
+      "feature": "LoanPurpose_Home",
+      "mean_abs_shap": 0.05581027641892433
+    },
+    {
+      "feature": "Education_Master's",
+      "mean_abs_shap": 0.050601776689291
+    },
+    {
+      "feature": "Education_High School",
+      "mean_abs_shap": 0.02818107418715954
+    },
+    {
+      "feature": "MaritalStatus_Single",
+      "mean_abs_shap": 0.02316480129957199
+    },
+    {
+      "feature": "LoanPurpose_Business",
+      "mean_abs_shap": 0.021355871111154556
+    },
+    {
+      "feature": "LoanPurpose_Education",
+      "mean_abs_shap": 0.0026540185790508986
+    },
+    {
+      "feature": "LoanPurpose_Other",
+      "mean_abs_shap": 0.002173902001231909
+    },
+    {
+      "feature": "LoanTerm",
+      "mean_abs_shap": 0.0005623825127258897
+    }
+  ],
+  "xgboost": [
+    {
+      "feature": "Age",
+      "mean_abs_shap": 0.5241376757621765
+    },
+    {
+      "feature": "InterestRate",
+      "mean_abs_shap": 0.4095055162906647
+    },
+    {
+      "feature": "MonthsEmployed",
+      "mean_abs_shap": 0.3121916651725769
+    },
+    {
+      "feature": "Income",
+      "mean_abs_shap": 0.2803371846675873
+    },
+    {
+      "feature": "LoanAmount",
+      "mean_abs_shap": 0.25027501583099365
+    },
+    {
+      "feature": "HasCoSigner",
+      "mean_abs_shap": 0.1317981630563736
+    },
+    {
+      "feature": "HasDependents",
+      "mean_abs_shap": 0.1270700991153717
+    },
+    {
+      "feature": "EmploymentType_Unemployed",
+      "mean_abs_shap": 0.12109827250242233
+    },
+    {
+      "feature": "CreditScore",
+      "mean_abs_shap": 0.11997834593057632
+    },
+    {
+      "feature": "NumCreditLines",
+      "mean_abs_shap": 0.09964381903409958
+    },
+    {
+      "feature": "MaritalStatus_Married",
+      "mean_abs_shap": 0.08212660253047943
+    },
+    {
+      "feature": "HasMortgage",
+      "mean_abs_shap": 0.08091505616903305
+    },
+    {
+      "feature": "DTIRatio",
+      "mean_abs_shap": 0.07841986417770386
+    },
+    {
+      "feature": "EmploymentType_Part-time",
+      "mean_abs_shap": 0.06150791421532631
+    },
+    {
+      "feature": "EmploymentType_Self-employed",
+      "mean_abs_shap": 0.06093289330601692
+    },
+    {
+      "feature": "Education_PhD",
+      "mean_abs_shap": 0.05986292287707329
+    },
+    {
+      "feature": "LoanPurpose_Home",
+      "mean_abs_shap": 0.05929895490407944
+    },
+    {
+      "feature": "Education_Master's",
+      "mean_abs_shap": 0.044478170573711395
+    },
+    {
+      "feature": "Education_High School",
+      "mean_abs_shap": 0.03690731152892113
+    },
+    {
+      "feature": "LoanPurpose_Business",
+      "mean_abs_shap": 0.024112235754728317
+    },
+    {
+      "feature": "MaritalStatus_Single",
+      "mean_abs_shap": 0.01625681295990944
+    },
+    {
+      "feature": "LoanTerm",
+      "mean_abs_shap": 0.013880684040486813
+    },
+    {
+      "feature": "LoanPurpose_Education",
+      "mean_abs_shap": 0.005633294582366943
+    },
+    {
+      "feature": "LoanPurpose_Other",
+      "mean_abs_shap": 0.005395349580794573
+    }
+  ]
+}

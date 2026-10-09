@@ -5,4 +5,6 @@ xgboost
 joblib
 skl2onnx
 onnxmltools
+onnxruntime
+shap
 packaging
