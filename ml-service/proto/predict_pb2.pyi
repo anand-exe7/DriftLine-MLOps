@@ -54,3 +54,23 @@ class HealthResponse(_message.Message):
     status: str
     loaded_models: _containers.RepeatedScalarFieldContainer[str]
     def __init__(self, status: _Optional[str] = ..., loaded_models: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class ModelRef(_message.Message):
+    __slots__ = ("model_name", "model_version")
+    MODEL_NAME_FIELD_NUMBER: _ClassVar[int]
+    MODEL_VERSION_FIELD_NUMBER: _ClassVar[int]
+    model_name: str
+    model_version: str
+    def __init__(self, model_name: _Optional[str] = ..., model_version: _Optional[str] = ...) -> None: ...
+
+class LoadModelResponse(_message.Message):
+    __slots__ = ("status_code", "error_message", "load_ms", "features")
+    STATUS_CODE_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    LOAD_MS_FIELD_NUMBER: _ClassVar[int]
+    FEATURES_FIELD_NUMBER: _ClassVar[int]
+    status_code: int
+    error_message: str
+    load_ms: int
+    features: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, status_code: _Optional[int] = ..., error_message: _Optional[str] = ..., load_ms: _Optional[int] = ..., features: _Optional[_Iterable[str]] = ...) -> None: ...

@@ -103,6 +103,10 @@ class ModelStore:
                 self._models[key] = model
             return model
 
+    def unload(self, name: str, version: str) -> bool:
+        with self._lock:
+            return self._models.pop((name, version), None) is not None
+
     def preload(self) -> None:
         for entry in self.available():
             name, version = entry.split("/")

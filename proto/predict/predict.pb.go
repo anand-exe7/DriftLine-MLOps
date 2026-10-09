@@ -269,6 +269,126 @@ func (x *HealthResponse) GetLoadedModels() []string {
 	return nil
 }
 
+type ModelRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ModelName     string                 `protobuf:"bytes,1,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`
+	ModelVersion  string                 `protobuf:"bytes,2,opt,name=model_version,json=modelVersion,proto3" json:"model_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModelRef) Reset() {
+	*x = ModelRef{}
+	mi := &file_predict_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModelRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModelRef) ProtoMessage() {}
+
+func (x *ModelRef) ProtoReflect() protoreflect.Message {
+	mi := &file_predict_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModelRef.ProtoReflect.Descriptor instead.
+func (*ModelRef) Descriptor() ([]byte, []int) {
+	return file_predict_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ModelRef) GetModelName() string {
+	if x != nil {
+		return x.ModelName
+	}
+	return ""
+}
+
+func (x *ModelRef) GetModelVersion() string {
+	if x != nil {
+		return x.ModelVersion
+	}
+	return ""
+}
+
+type LoadModelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StatusCode    int32                  `protobuf:"varint,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"` // 0 OK, 5 NOT_FOUND, 13 INTERNAL
+	ErrorMessage  string                 `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	LoadMs        int64                  `protobuf:"varint,3,opt,name=load_ms,json=loadMs,proto3" json:"load_ms,omitempty"`
+	Features      []string               `protobuf:"bytes,4,rep,name=features,proto3" json:"features,omitempty"` // the version's expected input features
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoadModelResponse) Reset() {
+	*x = LoadModelResponse{}
+	mi := &file_predict_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoadModelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoadModelResponse) ProtoMessage() {}
+
+func (x *LoadModelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_predict_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoadModelResponse.ProtoReflect.Descriptor instead.
+func (*LoadModelResponse) Descriptor() ([]byte, []int) {
+	return file_predict_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *LoadModelResponse) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *LoadModelResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *LoadModelResponse) GetLoadMs() int64 {
+	if x != nil {
+		return x.LoadMs
+	}
+	return 0
+}
+
+func (x *LoadModelResponse) GetFeatures() []string {
+	if x != nil {
+		return x.Features
+	}
+	return nil
+}
+
 var File_predict_proto protoreflect.FileDescriptor
 
 const file_predict_proto_rawDesc = "" +
@@ -300,10 +420,22 @@ const file_predict_proto_rawDesc = "" +
 	"\rHealthRequest\"M\n" +
 	"\x0eHealthResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12#\n" +
-	"\rloaded_models\x18\x02 \x03(\tR\floadedModels2\x97\x01\n" +
+	"\rloaded_models\x18\x02 \x03(\tR\floadedModels\"N\n" +
+	"\bModelRef\x12\x1d\n" +
+	"\n" +
+	"model_name\x18\x01 \x01(\tR\tmodelName\x12#\n" +
+	"\rmodel_version\x18\x02 \x01(\tR\fmodelVersion\"\x8e\x01\n" +
+	"\x11LoadModelResponse\x12\x1f\n" +
+	"\vstatus_code\x18\x01 \x01(\x05R\n" +
+	"statusCode\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12\x17\n" +
+	"\aload_ms\x18\x03 \x01(\x03R\x06loadMs\x12\x1a\n" +
+	"\bfeatures\x18\x04 \x03(\tR\bfeatures2\x91\x02\n" +
 	"\x11PredictionService\x12B\n" +
 	"\aPredict\x12\x1a.predict.PredictionRequest\x1a\x1b.predict.PredictionResponse\x12>\n" +
-	"\vHealthCheck\x12\x16.predict.HealthRequest\x1a\x17.predict.HealthResponseB#Z!driftline/proto/predict;predictpbb\x06proto3"
+	"\vHealthCheck\x12\x16.predict.HealthRequest\x1a\x17.predict.HealthResponse\x12:\n" +
+	"\tLoadModel\x12\x11.predict.ModelRef\x1a\x1a.predict.LoadModelResponse\x12<\n" +
+	"\vUnloadModel\x12\x11.predict.ModelRef\x1a\x1a.predict.LoadModelResponseB#Z!driftline/proto/predict;predictpbb\x06proto3"
 
 var (
 	file_predict_proto_rawDescOnce sync.Once
@@ -317,22 +449,28 @@ func file_predict_proto_rawDescGZIP() []byte {
 	return file_predict_proto_rawDescData
 }
 
-var file_predict_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_predict_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_predict_proto_goTypes = []any{
 	(*PredictionRequest)(nil),  // 0: predict.PredictionRequest
 	(*PredictionResponse)(nil), // 1: predict.PredictionResponse
 	(*HealthRequest)(nil),      // 2: predict.HealthRequest
 	(*HealthResponse)(nil),     // 3: predict.HealthResponse
-	nil,                        // 4: predict.PredictionRequest.FeaturesEntry
+	(*ModelRef)(nil),           // 4: predict.ModelRef
+	(*LoadModelResponse)(nil),  // 5: predict.LoadModelResponse
+	nil,                        // 6: predict.PredictionRequest.FeaturesEntry
 }
 var file_predict_proto_depIdxs = []int32{
-	4, // 0: predict.PredictionRequest.features:type_name -> predict.PredictionRequest.FeaturesEntry
+	6, // 0: predict.PredictionRequest.features:type_name -> predict.PredictionRequest.FeaturesEntry
 	0, // 1: predict.PredictionService.Predict:input_type -> predict.PredictionRequest
 	2, // 2: predict.PredictionService.HealthCheck:input_type -> predict.HealthRequest
-	1, // 3: predict.PredictionService.Predict:output_type -> predict.PredictionResponse
-	3, // 4: predict.PredictionService.HealthCheck:output_type -> predict.HealthResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	4, // 3: predict.PredictionService.LoadModel:input_type -> predict.ModelRef
+	4, // 4: predict.PredictionService.UnloadModel:input_type -> predict.ModelRef
+	1, // 5: predict.PredictionService.Predict:output_type -> predict.PredictionResponse
+	3, // 6: predict.PredictionService.HealthCheck:output_type -> predict.HealthResponse
+	5, // 7: predict.PredictionService.LoadModel:output_type -> predict.LoadModelResponse
+	5, // 8: predict.PredictionService.UnloadModel:output_type -> predict.LoadModelResponse
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -349,7 +487,7 @@ func file_predict_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_predict_proto_rawDesc), len(file_predict_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

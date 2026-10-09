@@ -111,3 +111,18 @@ def test_http_predict_matches_grpc(stub, store):
     }).status_code == 404
     assert client.get("/health").json()["status"] == "ok"
     assert b"mlservice_predictions_total" in client.get("/metrics").content
+
+
+def test_load_and_unload(stub, store):
+    ref = predict_pb2.ModelRef(model_name="loan_default_lr", model_version="v1")
+    resp = stub.LoadModel(ref, timeout=5)
+    assert resp.status_code == OK
+    assert len(resp.features) == 24
+    assert "loan_default_lr/v1" in store.loaded()
+
+    assert stub.UnloadModel(ref, timeout=5).status_code == OK
+    assert "loan_default_lr/v1" not in store.loaded()
+    assert stub.UnloadModel(ref, timeout=5).status_code == NOT_FOUND
+
+    missing = stub.LoadModel(predict_pb2.ModelRef(model_name="ghost", model_version="v1"), timeout=5)
+    assert missing.status_code == NOT_FOUND

@@ -46,6 +46,16 @@ class PredictionServiceStub:
                 request_serializer=proto_dot_predict__pb2.HealthRequest.SerializeToString,
                 response_deserializer=proto_dot_predict__pb2.HealthResponse.FromString,
                 _registered_method=True)
+        self.LoadModel = channel.unary_unary(
+                '/predict.PredictionService/LoadModel',
+                request_serializer=proto_dot_predict__pb2.ModelRef.SerializeToString,
+                response_deserializer=proto_dot_predict__pb2.LoadModelResponse.FromString,
+                _registered_method=True)
+        self.UnloadModel = channel.unary_unary(
+                '/predict.PredictionService/UnloadModel',
+                request_serializer=proto_dot_predict__pb2.ModelRef.SerializeToString,
+                response_deserializer=proto_dot_predict__pb2.LoadModelResponse.FromString,
+                _registered_method=True)
 
 
 class PredictionServiceServicer:
@@ -65,6 +75,21 @@ class PredictionServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def LoadModel(self, request, context):
+        """LoadModel warms a version (fetch + create the ONNX session) so the first
+        real request after a deployment doesn't pay the load cost.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UnloadModel(self, request, context):
+        """UnloadModel drops a version's session, e.g. when its deployment stops.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_PredictionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -77,6 +102,16 @@ def add_PredictionServiceServicer_to_server(servicer, server):
                     servicer.HealthCheck,
                     request_deserializer=proto_dot_predict__pb2.HealthRequest.FromString,
                     response_serializer=proto_dot_predict__pb2.HealthResponse.SerializeToString,
+            ),
+            'LoadModel': grpc.unary_unary_rpc_method_handler(
+                    servicer.LoadModel,
+                    request_deserializer=proto_dot_predict__pb2.ModelRef.FromString,
+                    response_serializer=proto_dot_predict__pb2.LoadModelResponse.SerializeToString,
+            ),
+            'UnloadModel': grpc.unary_unary_rpc_method_handler(
+                    servicer.UnloadModel,
+                    request_deserializer=proto_dot_predict__pb2.ModelRef.FromString,
+                    response_serializer=proto_dot_predict__pb2.LoadModelResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -135,6 +170,60 @@ class PredictionService:
             '/predict.PredictionService/HealthCheck',
             proto_dot_predict__pb2.HealthRequest.SerializeToString,
             proto_dot_predict__pb2.HealthResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def LoadModel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/predict.PredictionService/LoadModel',
+            proto_dot_predict__pb2.ModelRef.SerializeToString,
+            proto_dot_predict__pb2.LoadModelResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UnloadModel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/predict.PredictionService/UnloadModel',
+            proto_dot_predict__pb2.ModelRef.SerializeToString,
+            proto_dot_predict__pb2.LoadModelResponse.FromString,
             options,
             channel_credentials,
             insecure,

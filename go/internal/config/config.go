@@ -4,6 +4,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -23,6 +24,34 @@ type Config struct {
 	SlackWebhookURL   string
 	DiscordWebhookURL string
 	AlertCooldown     time.Duration
+
+	// APIKey protects /api/v1 when set (X-API-Key or Bearer). Empty = open.
+	APIKey string
+
+	PredictionLogBuffer int
+
+	Drift    DriftConfig
+	Rollback RollbackConfig
+}
+
+type DriftConfig struct {
+	Enabled    bool
+	Interval   time.Duration
+	Window     time.Duration
+	MinSamples int
+	Workers    int
+	FeaturePSI float64
+	OverallPSI float64
+}
+
+type RollbackConfig struct {
+	Auto            bool
+	CheckInterval   time.Duration
+	Window          time.Duration
+	MinRequests     int
+	MaxErrorRate    float64
+	MaxErrorDelta   float64
+	MaxPositiveDiff float64
 }
 
 type MinIOConfig struct {
@@ -64,7 +93,73 @@ func Load() (Config, error) {
 	}
 	cfg.MaxUploadBytes = int64(maxMB) << 20
 
+	cfg.APIKey = os.Getenv("API_KEY")
+
+	// Collect every parse error instead of stopping at the first, so a bad
+	// .env is fixed in one go.
+	p := &parser{}
+	cfg.PredictionLogBuffer = p.int("PREDICTION_LOG_BUFFER", 10000)
+	cfg.Drift = DriftConfig{
+		Enabled:    p.bool("DRIFT_ENABLED", true),
+		Interval:   p.duration("DRIFT_INTERVAL", time.Minute),
+		Window:     p.duration("DRIFT_WINDOW", 15*time.Minute),
+		MinSamples: p.int("DRIFT_MIN_SAMPLES", 100),
+		Workers:    p.int("DRIFT_WORKERS", 4),
+		FeaturePSI: p.float("DRIFT_FEATURE_PSI", 0.25),
+		OverallPSI: p.float("DRIFT_OVERALL_PSI", 0.1),
+	}
+	cfg.Rollback = RollbackConfig{
+		Auto:            p.bool("AUTO_ROLLBACK", true),
+		CheckInterval:   p.duration("ROLLBACK_CHECK_INTERVAL", 30*time.Second),
+		Window:          p.duration("ROLLBACK_WINDOW", 5*time.Minute),
+		MinRequests:     p.int("ROLLBACK_MIN_REQUESTS", 50),
+		MaxErrorRate:    p.float("ROLLBACK_MAX_ERROR_RATE", 0.05),
+		MaxErrorDelta:   p.float("ROLLBACK_MAX_ERROR_DELTA", 0.03),
+		MaxPositiveDiff: p.float("ROLLBACK_MAX_POSITIVE_DIFF", 0.25),
+	}
+	if p.err != nil {
+		return Config{}, p.err
+	}
 	return cfg, nil
+}
+
+type parser struct{ err error }
+
+func (p *parser) keep(err error) {
+	if err != nil {
+		p.err = errors.Join(p.err, err)
+	}
+}
+
+func (p *parser) int(key string, fb int) int {
+	v, err := getInt(key, fb)
+	p.keep(err)
+	return v
+}
+
+func (p *parser) bool(key string, fb bool) bool {
+	v, err := getBool(key, fb)
+	p.keep(err)
+	return v
+}
+
+func (p *parser) duration(key string, fb time.Duration) time.Duration {
+	v, err := getDuration(key, fb)
+	p.keep(err)
+	return v
+}
+
+func (p *parser) float(key string, fb float64) float64 {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fb
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		p.keep(fmt.Errorf("config: %s=%q is not a number: %w", key, raw, err))
+		return fb
+	}
+	return v
 }
 
 func getEnv(key, fallback string) string {

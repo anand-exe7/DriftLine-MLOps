@@ -20,7 +20,16 @@ import (
 // PagerDuty later means adding a type, not touching callers.
 type AlertNotifier interface {
 	NotifyDrift(ctx context.Context, report models.DriftReport) error
+	// NotifyEvent sends a free-form operational message, e.g. "canary rolled back".
+	NotifyEvent(ctx context.Context, ev Event) error
 	Name() string
+}
+
+// Event is an operational notification that isn't a drift report.
+type Event struct {
+	Title    string
+	Text     string
+	Severity models.Severity
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +184,17 @@ func (s *SlackWebhookNotifier) NotifyDrift(ctx context.Context, r models.DriftRe
 	return nil
 }
 
+func (s *SlackWebhookNotifier) NotifyEvent(ctx context.Context, ev Event) error {
+	blocks := []map[string]any{
+		{"type": "header", "text": map[string]any{"type": "plain_text", "text": ev.Title}},
+		{"type": "section", "text": map[string]any{"type": "mrkdwn", "text": ev.Text}},
+	}
+	if err := s.hook.post(ctx, map[string]any{"text": ev.Title + " — " + ev.Text, "blocks": blocks}); err != nil {
+		return fmt.Errorf("slack: %w", err)
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // Discord (webhooks + embeds)
 
@@ -203,6 +223,19 @@ func (d *DiscordWebhookNotifier) NotifyDrift(ctx context.Context, r models.Drift
 		embed["fields"] = []map[string]any{{"name": "Top drifted features", "value": lines}}
 	}
 
+	if err := d.hook.post(ctx, map[string]any{"username": "Driftline", "embeds": []any{embed}}); err != nil {
+		return fmt.Errorf("discord: %w", err)
+	}
+	return nil
+}
+
+func (d *DiscordWebhookNotifier) NotifyEvent(ctx context.Context, ev Event) error {
+	color := map[models.Severity]int{
+		models.SeverityCritical: 0xE01E5A,
+		models.SeverityWarning:  0xECB22E,
+		models.SeverityInfo:     0x36C5F0,
+	}[ev.Severity]
+	embed := map[string]any{"title": ev.Title, "description": ev.Text, "color": color}
 	if err := d.hook.post(ctx, map[string]any{"username": "Driftline", "embeds": []any{embed}}); err != nil {
 		return fmt.Errorf("discord: %w", err)
 	}

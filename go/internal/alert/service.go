@@ -13,6 +13,9 @@ import (
 	"driftline/go/internal/models"
 )
 
+// DashboardChannel marks alerts that were only recorded (no webhook configured).
+const DashboardChannel = "dashboard"
+
 // Service is what the drift engine calls. It decides *whether* to alert
 // (drift detected, not in cooldown), fans out to every configured notifier
 // concurrently, and records one alerts row per channel attempt.
@@ -63,6 +66,50 @@ func (s *Service) HandleDriftReport(ctx context.Context, report models.DriftRepo
 	return s.dispatch(ctx, report)
 }
 
+// NotifyEvent fans an operational event (e.g. an automatic rollback) out to
+// every channel and records each attempt, like a drift alert.
+func (s *Service) NotifyEvent(ctx context.Context, ev Event, modelVersionID uuid.UUID) error {
+	if len(s.notifiers) == 0 {
+		s.log.WarnContext(ctx, "event recorded for the dashboard only (no external channels)", "title", ev.Title)
+		if s.repo != nil {
+			a := models.Alert{Severity: ev.Severity, Channel: DashboardChannel, Message: ev.Title + " — " + ev.Text, Status: "sent"}
+			if modelVersionID != uuid.Nil {
+				a.ModelVersionID = &modelVersionID
+			}
+			if err := s.repo.Insert(context.WithoutCancel(ctx), &a); err != nil {
+				s.log.ErrorContext(ctx, "failed to record alert", "err", err)
+			}
+		}
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	errs := make([]error, len(s.notifiers))
+	var wg sync.WaitGroup
+	for i, n := range s.notifiers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs[i] = n.NotifyEvent(ctx, ev)
+			a := models.Alert{Severity: ev.Severity, Channel: n.Name(), Message: ev.Title + " — " + ev.Text, Status: "sent"}
+			if modelVersionID != uuid.Nil {
+				a.ModelVersionID = &modelVersionID
+			}
+			if errs[i] != nil {
+				a.Status, a.Error = "failed", errs[i].Error()
+			}
+			if s.repo != nil {
+				if err := s.repo.Insert(context.WithoutCancel(ctx), &a); err != nil {
+					s.log.ErrorContext(ctx, "failed to record alert", "err", err)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	return errors.Join(errs...)
+}
+
 // SendTest bypasses the drift/cooldown checks; used by POST /alerts/test to
 // verify webhook URLs.
 func (s *Service) SendTest(ctx context.Context, report models.DriftReport) error {
@@ -86,8 +133,10 @@ func (s *Service) claimCooldown(versionID uuid.UUID) bool {
 
 func (s *Service) dispatch(ctx context.Context, report models.DriftReport) error {
 	if len(s.notifiers) == 0 {
-		s.log.WarnContext(ctx, "drift detected but no alert channels configured",
+		// Still record it, so the dashboard shows drift even without webhooks.
+		s.log.WarnContext(ctx, "drift detected; no external channels configured, recorded for the dashboard only",
 			"model", report.ModelName, "version", report.Version, "psi", report.OverallPSI)
+		s.record(ctx, report, DashboardChannel, nil)
 		return nil
 	}
 

@@ -59,6 +59,27 @@ class PredictionServicer(predict_pb2_grpc.PredictionServiceServicer):
         LATENCY.labels(name, version).observe(elapsed)
         return resp
 
+    def LoadModel(self, request, context):
+        start = time.perf_counter()
+        try:
+            model = self._store.get(request.model_name, request.model_version)
+        except ModelNotFound as err:
+            return predict_pb2.LoadModelResponse(status_code=NOT_FOUND, error_message=str(err))
+        except Exception as err:
+            log.exception("load failed for %s/%s", request.model_name, request.model_version)
+            return predict_pb2.LoadModelResponse(status_code=INTERNAL, error_message=f"load error: {err}")
+        return predict_pb2.LoadModelResponse(
+            status_code=OK,
+            load_ms=int(round((time.perf_counter() - start) * 1000)),
+            features=model.features,
+        )
+
+    def UnloadModel(self, request, context):
+        removed = self._store.unload(request.model_name, request.model_version)
+        if not removed:
+            return predict_pb2.LoadModelResponse(status_code=NOT_FOUND, error_message="model not loaded")
+        return predict_pb2.LoadModelResponse(status_code=OK)
+
     def HealthCheck(self, request, context):
         return predict_pb2.HealthResponse(status="SERVING", loaded_models=self._store.loaded())
 

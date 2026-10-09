@@ -170,6 +170,10 @@ type stubNotifier struct {
 }
 
 func (s *stubNotifier) Name() string { return s.name }
+func (s *stubNotifier) NotifyEvent(context.Context, Event) error {
+	s.calls.Add(1)
+	return s.err
+}
 func (s *stubNotifier) NotifyDrift(context.Context, models.DriftReport) error {
 	s.calls.Add(1)
 	return s.err
@@ -267,5 +271,35 @@ func TestServiceCooldownIsRaceFree(t *testing.T) {
 	wg.Wait()
 	if got := n.calls.Load(); got != 1 {
 		t.Fatalf("calls = %d, want exactly 1 under concurrency", got)
+	}
+}
+
+func TestEventPayloads(t *testing.T) {
+	ev := Event{Title: "Canary rolled back: loan_default_xgb/v2", Text: "error rate 12% vs 0%", Severity: models.SeverityCritical}
+
+	slack := &capture{statuses: []int{200}}
+	if err := NewSlackWebhookNotifier(slack.server(t).URL, nil).NotifyEvent(context.Background(), ev); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := json.Marshal(slack.bodies[0]); !strings.Contains(string(raw), "Canary rolled back") {
+		t.Errorf("slack payload: %s", raw)
+	}
+
+	discord := &capture{statuses: []int{204}}
+	if err := NewDiscordWebhookNotifier(discord.server(t).URL, nil).NotifyEvent(context.Background(), ev); err != nil {
+		t.Fatal(err)
+	}
+	embed := discord.bodies[0]["embeds"].([]any)[0].(map[string]any)
+	if embed["title"] != ev.Title || embed["color"].(float64) != 0xE01E5A {
+		t.Errorf("discord embed: %v", embed)
+	}
+}
+
+func TestServiceNotifyEventRecordsEachChannel(t *testing.T) {
+	repo := &memRepo{}
+	svc := NewService([]AlertNotifier{&stubNotifier{name: "slack"}, &stubNotifier{name: "discord", err: errors.New("down")}}, repo, quietLogger(), time.Hour)
+	err := svc.NotifyEvent(context.Background(), Event{Title: "t", Text: "x", Severity: models.SeverityWarning}, uuid.New())
+	if err == nil || len(repo.alerts) != 2 {
+		t.Fatalf("err=%v alerts=%d", err, len(repo.alerts))
 	}
 }

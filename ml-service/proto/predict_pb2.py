@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13proto/predict.proto\x12\x07predict\"\xbf\x01\n\x11PredictionRequest\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x15\n\rmodel_version\x18\x02 \x01(\t\x12:\n\x08\x66\x65\x61tures\x18\x03 \x03(\x0b\x32(.predict.PredictionRequest.FeaturesEntry\x12\x12\n\nrequest_id\x18\x04 \x01(\t\x1a/\n\rFeaturesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x01:\x02\x38\x01\"\xaf\x01\n\x12PredictionResponse\x12\x12\n\nprediction\x18\x01 \x01(\x05\x12\x15\n\rprobabilities\x18\x02 \x03(\x02\x12\x1a\n\x12model_version_used\x18\x03 \x01(\t\x12\x12\n\nlatency_ms\x18\x04 \x01(\x03\x12\x13\n\x0bstatus_code\x18\x05 \x01(\x05\x12\x15\n\rerror_message\x18\x06 \x01(\t\x12\x12\n\nrequest_id\x18\x07 \x01(\t\"\x0f\n\rHealthRequest\"7\n\x0eHealthResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x15\n\rloaded_models\x18\x02 \x03(\t2\x97\x01\n\x11PredictionService\x12\x42\n\x07Predict\x12\x1a.predict.PredictionRequest\x1a\x1b.predict.PredictionResponse\x12>\n\x0bHealthCheck\x12\x16.predict.HealthRequest\x1a\x17.predict.HealthResponseB#Z!driftline/proto/predict;predictpbb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13proto/predict.proto\x12\x07predict\"\xbf\x01\n\x11PredictionRequest\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x15\n\rmodel_version\x18\x02 \x01(\t\x12:\n\x08\x66\x65\x61tures\x18\x03 \x03(\x0b\x32(.predict.PredictionRequest.FeaturesEntry\x12\x12\n\nrequest_id\x18\x04 \x01(\t\x1a/\n\rFeaturesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x01:\x02\x38\x01\"\xaf\x01\n\x12PredictionResponse\x12\x12\n\nprediction\x18\x01 \x01(\x05\x12\x15\n\rprobabilities\x18\x02 \x03(\x02\x12\x1a\n\x12model_version_used\x18\x03 \x01(\t\x12\x12\n\nlatency_ms\x18\x04 \x01(\x03\x12\x13\n\x0bstatus_code\x18\x05 \x01(\x05\x12\x15\n\rerror_message\x18\x06 \x01(\t\x12\x12\n\nrequest_id\x18\x07 \x01(\t\"\x0f\n\rHealthRequest\"7\n\x0eHealthResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x15\n\rloaded_models\x18\x02 \x03(\t\"5\n\x08ModelRef\x12\x12\n\nmodel_name\x18\x01 \x01(\t\x12\x15\n\rmodel_version\x18\x02 \x01(\t\"b\n\x11LoadModelResponse\x12\x13\n\x0bstatus_code\x18\x01 \x01(\x05\x12\x15\n\rerror_message\x18\x02 \x01(\t\x12\x0f\n\x07load_ms\x18\x03 \x01(\x03\x12\x10\n\x08\x66\x65\x61tures\x18\x04 \x03(\t2\x91\x02\n\x11PredictionService\x12\x42\n\x07Predict\x12\x1a.predict.PredictionRequest\x1a\x1b.predict.PredictionResponse\x12>\n\x0bHealthCheck\x12\x16.predict.HealthRequest\x1a\x17.predict.HealthResponse\x12:\n\tLoadModel\x12\x11.predict.ModelRef\x1a\x1a.predict.LoadModelResponse\x12<\n\x0bUnloadModel\x12\x11.predict.ModelRef\x1a\x1a.predict.LoadModelResponseB#Z!driftline/proto/predict;predictpbb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -44,6 +44,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_HEALTHREQUEST']._serialized_end=419
   _globals['_HEALTHRESPONSE']._serialized_start=421
   _globals['_HEALTHRESPONSE']._serialized_end=476
-  _globals['_PREDICTIONSERVICE']._serialized_start=479
-  _globals['_PREDICTIONSERVICE']._serialized_end=630
+  _globals['_MODELREF']._serialized_start=478
+  _globals['_MODELREF']._serialized_end=531
+  _globals['_LOADMODELRESPONSE']._serialized_start=533
+  _globals['_LOADMODELRESPONSE']._serialized_end=631
+  _globals['_PREDICTIONSERVICE']._serialized_start=634
+  _globals['_PREDICTIONSERVICE']._serialized_end=907
 # @@protoc_insertion_point(module_scope)

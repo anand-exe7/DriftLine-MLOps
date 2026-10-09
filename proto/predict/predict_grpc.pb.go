@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PredictionService_Predict_FullMethodName     = "/predict.PredictionService/Predict"
 	PredictionService_HealthCheck_FullMethodName = "/predict.PredictionService/HealthCheck"
+	PredictionService_LoadModel_FullMethodName   = "/predict.PredictionService/LoadModel"
+	PredictionService_UnloadModel_FullMethodName = "/predict.PredictionService/UnloadModel"
 )
 
 // PredictionServiceClient is the client API for PredictionService service.
@@ -32,6 +34,11 @@ const (
 type PredictionServiceClient interface {
 	Predict(ctx context.Context, in *PredictionRequest, opts ...grpc.CallOption) (*PredictionResponse, error)
 	HealthCheck(ctx context.Context, in *HealthRequest, opts ...grpc.CallOption) (*HealthResponse, error)
+	// LoadModel warms a version (fetch + create the ONNX session) so the first
+	// real request after a deployment doesn't pay the load cost.
+	LoadModel(ctx context.Context, in *ModelRef, opts ...grpc.CallOption) (*LoadModelResponse, error)
+	// UnloadModel drops a version's session, e.g. when its deployment stops.
+	UnloadModel(ctx context.Context, in *ModelRef, opts ...grpc.CallOption) (*LoadModelResponse, error)
 }
 
 type predictionServiceClient struct {
@@ -62,6 +69,26 @@ func (c *predictionServiceClient) HealthCheck(ctx context.Context, in *HealthReq
 	return out, nil
 }
 
+func (c *predictionServiceClient) LoadModel(ctx context.Context, in *ModelRef, opts ...grpc.CallOption) (*LoadModelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoadModelResponse)
+	err := c.cc.Invoke(ctx, PredictionService_LoadModel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *predictionServiceClient) UnloadModel(ctx context.Context, in *ModelRef, opts ...grpc.CallOption) (*LoadModelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoadModelResponse)
+	err := c.cc.Invoke(ctx, PredictionService_UnloadModel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PredictionServiceServer is the server API for PredictionService service.
 // All implementations must embed UnimplementedPredictionServiceServer
 // for forward compatibility.
@@ -71,6 +98,11 @@ func (c *predictionServiceClient) HealthCheck(ctx context.Context, in *HealthReq
 type PredictionServiceServer interface {
 	Predict(context.Context, *PredictionRequest) (*PredictionResponse, error)
 	HealthCheck(context.Context, *HealthRequest) (*HealthResponse, error)
+	// LoadModel warms a version (fetch + create the ONNX session) so the first
+	// real request after a deployment doesn't pay the load cost.
+	LoadModel(context.Context, *ModelRef) (*LoadModelResponse, error)
+	// UnloadModel drops a version's session, e.g. when its deployment stops.
+	UnloadModel(context.Context, *ModelRef) (*LoadModelResponse, error)
 	mustEmbedUnimplementedPredictionServiceServer()
 }
 
@@ -86,6 +118,12 @@ func (UnimplementedPredictionServiceServer) Predict(context.Context, *Prediction
 }
 func (UnimplementedPredictionServiceServer) HealthCheck(context.Context, *HealthRequest) (*HealthResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedPredictionServiceServer) LoadModel(context.Context, *ModelRef) (*LoadModelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LoadModel not implemented")
+}
+func (UnimplementedPredictionServiceServer) UnloadModel(context.Context, *ModelRef) (*LoadModelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnloadModel not implemented")
 }
 func (UnimplementedPredictionServiceServer) mustEmbedUnimplementedPredictionServiceServer() {}
 func (UnimplementedPredictionServiceServer) testEmbeddedByValue()                           {}
@@ -144,6 +182,42 @@ func _PredictionService_HealthCheck_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PredictionService_LoadModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModelRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PredictionServiceServer).LoadModel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PredictionService_LoadModel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PredictionServiceServer).LoadModel(ctx, req.(*ModelRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PredictionService_UnloadModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModelRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PredictionServiceServer).UnloadModel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PredictionService_UnloadModel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PredictionServiceServer).UnloadModel(ctx, req.(*ModelRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PredictionService_ServiceDesc is the grpc.ServiceDesc for PredictionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -158,6 +232,14 @@ var PredictionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HealthCheck",
 			Handler:    _PredictionService_HealthCheck_Handler,
+		},
+		{
+			MethodName: "LoadModel",
+			Handler:    _PredictionService_LoadModel_Handler,
+		},
+		{
+			MethodName: "UnloadModel",
+			Handler:    _PredictionService_UnloadModel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

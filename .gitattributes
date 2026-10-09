@@ -1,2 +1,6 @@
-*.sh text eol=lf
+# LF everywhere so gofmt, shell scripts and Linux CI agree regardless of the
+# committer's OS (core.autocrlf would otherwise check out CRLF on Windows).
+* text=auto eol=lf
 *.onnx binary
+*.ico binary
+*.png binary

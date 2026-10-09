@@ -4,7 +4,7 @@ End-to-end offline pipeline for the loan-default models:
     load + split -> train LR & XGB -> evaluate -> baseline stats -> SHAP
     -> ONNX export + parity check -> publish bundles to ml-service/models
 
-Run from this directory:  python train.py [--version v1] [--no-publish]
+Run from this directory:  python train.py [--version v1] [--no-publish] [--data path.csv]
 """
 import argparse
 import os
@@ -75,9 +75,9 @@ def publish(bundles):
         print(f"     Published -> {target}")
 
 
-def train(version="v1", do_publish=True):
+def train(version="v1", do_publish=True, data_path="data/Loan_default.csv"):
     print("     Loading + splitting dataset")
-    X_train_df, X_test_df, y_train_s, y_test_s = load_and_split()
+    X_train_df, X_test_df, y_train_s, y_test_s = load_and_split(data_path)
     feature_names = list(X_train_df.columns)
 
     # Both models train on the exact float32 matrix ONNX will receive at serving
@@ -122,5 +122,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", default="v1")
     parser.add_argument("--no-publish", action="store_true")
+    parser.add_argument("--data", default="data/Loan_default.csv", help="training CSV")
     args = parser.parse_args()
-    train(args.version, not args.no_publish)
+    train(args.version, not args.no_publish, args.data)

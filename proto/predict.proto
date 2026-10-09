@@ -9,6 +9,11 @@ option go_package = "driftline/proto/predict;predictpb";
 service PredictionService {
   rpc Predict (PredictionRequest) returns (PredictionResponse);
   rpc HealthCheck (HealthRequest) returns (HealthResponse);
+  // LoadModel warms a version (fetch + create the ONNX session) so the first
+  // real request after a deployment doesn't pay the load cost.
+  rpc LoadModel (ModelRef) returns (LoadModelResponse);
+  // UnloadModel drops a version's session, e.g. when its deployment stops.
+  rpc UnloadModel (ModelRef) returns (LoadModelResponse);
 }
 
 message PredictionRequest {
@@ -33,4 +38,16 @@ message HealthRequest {}
 message HealthResponse {
   string status = 1;                  // "SERVING" / "NOT_SERVING"
   repeated string loaded_models = 2;  // "name/version" currently cached in memory
+}
+
+message ModelRef {
+  string model_name = 1;
+  string model_version = 2;
+}
+
+message LoadModelResponse {
+  int32 status_code = 1;              // 0 OK, 5 NOT_FOUND, 13 INTERNAL
+  string error_message = 2;
+  int64 load_ms = 3;
+  repeated string features = 4;       // the version's expected input features
 }
