@@ -128,7 +128,7 @@ When helping with Go code, prefer surfacing these patterns explicitly rather tha
 - [x] Go: repo/proto scaffolding, DB migrations, Model Registry module
 - [x] ml-service: Python gRPC PredictionService serving ONNX bundles
 - [x] Go: MinIO storage wrapper, Alert notifiers (Slack/Discord)
-- [ ] docker compose end-to-end run (written, not yet executed)
+- [x] docker compose end-to-end run (`scripts/e2e_smoke.sh`: registry -> MinIO -> ml-service -> prediction)
 - [ ] Go: Deployment Manager, Prediction Proxy + gRPC client
 - [ ] Go: Drift Scheduler + PSI/KS-test implementation
 - [ ] Go: Alert Service, Rollback Manager
