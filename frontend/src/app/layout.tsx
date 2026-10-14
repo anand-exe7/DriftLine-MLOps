@@ -1,24 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Poppins, JetBrains_Mono } from "next/font/google";
 import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const poppins = Poppins({
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Driftline",
-  description: "Model registry, serving and monitoring for Driftline",
+  title: "Driftline — MLOps Control Plane",
+  description: "Model registry, live canary routing, drift detection and monitoring for Driftline",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${poppins.variable} ${mono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        {/* Apply the saved/OS theme before first paint so there is no light flash. */}
+        {/* Default to light beige theme */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("driftline-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("driftline-theme")||"light";document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light";}`,
           }}
         />
       </head>

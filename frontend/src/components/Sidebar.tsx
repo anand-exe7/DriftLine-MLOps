@@ -58,15 +58,15 @@ export function Sidebar() {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   const nav = (
-    <nav className="flex h-full flex-col gap-1 p-3">
-      <Link href="/" className="mb-4 flex items-center gap-2.5 px-3 pt-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
-          <Waves size={18} aria-hidden />
+    <nav className="flex h-full flex-col gap-1.5 p-4">
+      <Link href="/" className="mb-6 flex items-center gap-3 px-2 pt-2">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm ring-1 ring-accent/30">
+          <Waves size={22} aria-hidden />
         </span>
-        <span>
-          <span className="block text-[15px] font-semibold leading-tight text-ink">Driftline</span>
-          <span className="block text-[11px] text-ink-3">MLOps control plane</span>
-        </span>
+        <div>
+          <span className="block text-lg font-bold leading-tight tracking-tight text-ink">Driftline</span>
+          <span className="block text-xs font-medium text-ink-3">MLOps Control Plane</span>
+        </div>
       </Link>
       {NAV.map(({ href, label, Icon }) => (
         <Link
@@ -74,16 +74,16 @@ export function Sidebar() {
           href={href}
           onClick={() => setOpen(false)}
           className={cx(
-            "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition",
-            isActive(href) ? "bg-accent-soft font-medium text-accent" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+            "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm sm:text-[15px] font-semibold transition",
+            isActive(href) ? "bg-accent-soft text-accent shadow-xs" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
           )}
           aria-current={isActive(href) ? "page" : undefined}
         >
-          <Icon size={16} aria-hidden />
+          <Icon size={18} aria-hidden />
           {label}
         </Link>
       ))}
-      <div className="mt-auto border-t border-line pt-3">
+      <div className="mt-auto border-t border-line pt-4">
         <ThemeToggle />
       </div>
     </nav>

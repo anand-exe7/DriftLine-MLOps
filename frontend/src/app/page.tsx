@@ -5,7 +5,6 @@ import { ArrowRight, Bell, Boxes, Cpu, Database, HardDrive, Server } from "lucid
 import {
   Card,
   EmptyState,
-  Explainer,
   HealthPill,
   LiveBadge,
   PageHeader,
@@ -39,33 +38,19 @@ export default function OverviewPage() {
   const p95 = histogramQuantile(0.95, mergeBuckets(t));
 
   const services = [
-    { name: "Go control plane", what: "Registry, proxy, deployments, drift, alerts", Icon: Server, state: h(health.data?.go), port: ":8080" },
-    { name: "PostgreSQL", what: "Models, versions, deployments, alerts", Icon: Database, state: h(health.data?.postgres), port: ":5432" },
-    { name: "MinIO", what: "Stores model.onnx + feature schema files", Icon: HardDrive, state: h(health.data?.minio), port: ":9000" },
-    { name: "ml-service", what: "gRPC inference with ONNX Runtime", Icon: Cpu, state: h(health.data?.ml), port: ":50051" },
+    { name: "Go control plane", what: "Registry · proxy · drift", Icon: Server, state: h(health.data?.go), port: ":8080" },
+    { name: "PostgreSQL", what: "Metadata store", Icon: Database, state: h(health.data?.postgres), port: ":5432" },
+    { name: "MinIO", what: "Artifact storage", Icon: HardDrive, state: h(health.data?.minio), port: ":9000" },
+    { name: "ml-service", what: "ONNX inference", Icon: Cpu, state: h(health.data?.ml), port: ":50051" },
   ];
 
   return (
     <>
       <PageHeader
         title="Overview"
-        subtitle="The live state of every Driftline service, the models it manages and the traffic it serves."
+        subtitle="Live state of services, models and traffic. See How it works for a walkthrough."
         actions={<LiveBadge updatedAt={health.updatedAt} error={health.error} intervalLabel="5s" />}
       />
-
-      <Explainer title="What is Driftline?">
-        <p>
-          Driftline manages the lifecycle of machine-learning models after training: it <b>stores</b> every trained
-          version, <b>serves</b> predictions from the one you promote to production, <b>watches</b> live traffic for
-          data drift, and <b>alerts</b> the team (Slack / Discord) when the model&apos;s inputs stop looking like its
-          training data.
-        </p>
-        <p>
-          The models here predict whether a loan applicant will <b>default</b>. Two are trained side by side: a
-          transparent Logistic Regression and a gradient-boosted XGBoost model. Every number on this page is read live
-          from the running services. Nothing is mocked.
-        </p>
-      </Explainer>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <StatTile label="Registered models" value={registry.data ? entries.length : "—"} hint="in the registry" />
@@ -167,14 +152,9 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <Card title="How a prediction flows" subtitle="Every step below is running" className="lg:col-span-3">
-          <Pipeline />
-        </Card>
-
+      <div className="mt-6">
         <Card
           title="Recent alerts"
-          className="lg:col-span-2"
           actions={
             <Link href="/alerts" className="flex items-center gap-1 text-xs font-medium text-accent hover:underline">
               All alerts <ArrowRight size={12} />
@@ -195,41 +175,11 @@ export default function OverviewPage() {
             </ul>
           ) : (
             <EmptyState icon={<Bell size={26} />} title={alerts.data ? "No alerts sent yet" : "Loading…"}>
-              {alerts.data && "Alerts appear here when the drift engine flags a model or you send a test alert."}
+              {alerts.data && "Alerts appear here when drift fires or you send a test alert."}
             </EmptyState>
           )}
         </Card>
       </div>
     </>
-  );
-}
-
-function Pipeline() {
-  const steps = [
-    { label: "Client", note: "POST /predict/{model}", live: true },
-    { label: "Go prediction proxy", note: "canary routing", live: true },
-    { label: "ml-service (gRPC)", note: "ONNX Runtime", live: true },
-    { label: "prediction_logs", note: "async, batched", live: true },
-    { label: "Drift scheduler", note: "PSI + KS vs baseline", live: true },
-    { label: "Alerts & rollback", note: "Slack / Discord / auto", live: true },
-  ];
-  return (
-    <ol className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-      {steps.map((s, i) => (
-        <li key={s.label} className="flex items-center gap-2">
-          <div
-            className={
-              s.live
-                ? "rounded-lg border border-line-strong bg-surface-2 px-3 py-2"
-                : "rounded-lg border border-dashed border-line-strong px-3 py-2 opacity-70"
-            }
-          >
-            <div className="text-xs font-medium text-ink">{s.label}</div>
-            <div className="text-[11px] text-ink-3">{s.live ? s.note : `${s.note} · in progress`}</div>
-          </div>
-          {i < steps.length - 1 && <ArrowRight size={14} className="hidden shrink-0 text-ink-3 sm:block" aria-hidden />}
-        </li>
-      ))}
-    </ol>
   );
 }
