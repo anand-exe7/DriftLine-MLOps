@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
-import { Activity, Bell, BookOpen, Boxes, FlaskConical, LayoutDashboard, Menu, Moon, Sun, Waves, X } from "lucide-react";
+import { Activity, Bell, BookOpen, Boxes, FlaskConical, LayoutDashboard, Menu, Moon, Radar, Rocket, Sun, Waves, X } from "lucide-react";
 import { cx } from "./ui";
 
 const NAV = [
   { href: "/", label: "Overview", Icon: LayoutDashboard },
   { href: "/models", label: "Model Registry", Icon: Boxes },
+  { href: "/deployments", label: "Deployments", Icon: Rocket },
   { href: "/predict", label: "Prediction Lab", Icon: FlaskConical },
   { href: "/monitoring", label: "Live Monitoring", Icon: Activity },
+  { href: "/drift", label: "Data Drift", Icon: Radar },
   { href: "/alerts", label: "Alerts", Icon: Bell },
   { href: "/guide", label: "How it works", Icon: BookOpen },
 ];

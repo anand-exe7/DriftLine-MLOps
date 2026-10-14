@@ -83,7 +83,8 @@ export default function MonitoringPage() {
         </p>
         <p>
           Counters reset when ml-service restarts. Send requests from the <Link href="/predict" className="font-medium text-accent hover:underline">Prediction Lab</Link>{" "}
-          and watch them appear here.
+          or <code className="font-mono">scripts/simulate_traffic.py</code> and watch them appear here. Longer history, the proxy&apos;s own
+          metrics and drift trends are in Grafana at <code className="font-mono">localhost:3001</code>.
         </p>
       </Explainer>
       <ErrorNote error={traffic.error} what="ml-service metrics" />
@@ -210,13 +211,12 @@ export default function MonitoringPage() {
             <Waves size={20} />
           </span>
           <div className="flex-1 text-sm leading-relaxed text-ink-2">
-            The baseline side is ready: every registered version carries its training distribution (decile bins per feature),
-            and the database has <code className="font-mono">prediction_logs</code> and <code className="font-mono">drift_reports</code> tables
-            waiting. The <b>drift scheduler</b> that logs live requests and computes PSI per feature is the next piece being built;
-            when it flags drift, it calls the alert service that is already running.
+            Every request through the Go proxy is logged with its inputs. Every minute the <b>drift scheduler</b> compares the
+            recent window against each serving version&apos;s training baseline (PSI and KS per feature), stores a report, alerts
+            on drift and lets the rollback manager react. The per-feature results live on the Data Drift page.
           </div>
-          <Link href="/models" className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-accent hover:underline">
-            View baselines <ArrowRight size={14} />
+          <Link href="/drift" className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-accent hover:underline">
+            Open Data Drift <ArrowRight size={14} />
           </Link>
         </div>
       </Card>

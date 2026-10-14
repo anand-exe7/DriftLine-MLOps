@@ -121,6 +121,23 @@ func (f *fakeRepo) SetStage(_ context.Context, model, version string, stage mode
 	return v, nil
 }
 
+func (f *fakeRepo) DeleteModel(_ context.Context, name string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.models[name]; !ok {
+		return nil, fmt.Errorf("delete: %w", ErrNotFound)
+	}
+	var keys []string
+	for k, v := range f.versions {
+		if v.ModelName == name {
+			keys = append(keys, v.ArtifactKey)
+			delete(f.versions, k)
+		}
+	}
+	delete(f.models, name)
+	return keys, nil
+}
+
 type fakeStore struct {
 	mu      sync.Mutex
 	objects map[string][]byte
@@ -333,5 +350,27 @@ func TestListVersionsUnknownModel(t *testing.T) {
 	svc, _, _ := newTestService(t)
 	if _, err := svc.ListVersions(context.Background(), "ghost"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
+	}
+}
+
+func TestDeleteModelRemovesArtifacts(t *testing.T) {
+	svc, _, store := newTestService(t)
+	ctx := context.Background()
+	for _, v := range []string{"v1", "v2"} {
+		if _, err := svc.RegisterVersion(ctx, validInput(v)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := svc.DeleteModel(ctx, "loan_default_xgb"); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.objects) != 0 || len(store.deleted) != 2 {
+		t.Fatalf("objects=%v deleted=%v", store.objects, store.deleted)
+	}
+	if _, err := svc.GetModel(ctx, "loan_default_xgb"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("model should be gone: %v", err)
+	}
+	if err := svc.DeleteModel(ctx, "loan_default_xgb"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("second delete: %v", err)
 	}
 }

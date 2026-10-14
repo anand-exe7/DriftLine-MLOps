@@ -39,7 +39,7 @@ export default function OverviewPage() {
   const p95 = histogramQuantile(0.95, mergeBuckets(t));
 
   const services = [
-    { name: "Go control plane", what: "REST API: registry, promotions, alerts", Icon: Server, state: h(health.data?.go), port: ":8080" },
+    { name: "Go control plane", what: "Registry, proxy, deployments, drift, alerts", Icon: Server, state: h(health.data?.go), port: ":8080" },
     { name: "PostgreSQL", what: "Models, versions, deployments, alerts", Icon: Database, state: h(health.data?.postgres), port: ":5432" },
     { name: "MinIO", what: "Stores model.onnx + feature schema files", Icon: HardDrive, state: h(health.data?.minio), port: ":9000" },
     { name: "ml-service", what: "gRPC inference with ONNX Runtime", Icon: Cpu, state: h(health.data?.ml), port: ":50051" },
@@ -168,7 +168,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <Card title="How a prediction flows" subtitle="Solid steps are running now; dashed ones are being built by the team" className="lg:col-span-3">
+        <Card title="How a prediction flows" subtitle="Every step below is running" className="lg:col-span-3">
           <Pipeline />
         </Card>
 
@@ -206,12 +206,12 @@ export default function OverviewPage() {
 
 function Pipeline() {
   const steps = [
-    { label: "Client", note: "dashboard / app", live: true },
-    { label: "Go prediction proxy", note: "canary routing", live: false },
+    { label: "Client", note: "POST /predict/{model}", live: true },
+    { label: "Go prediction proxy", note: "canary routing", live: true },
     { label: "ml-service (gRPC)", note: "ONNX Runtime", live: true },
-    { label: "prediction_logs", note: "Postgres", live: false },
-    { label: "Drift scheduler", note: "PSI vs baseline", live: false },
-    { label: "Alert service", note: "Slack / Discord", live: true },
+    { label: "prediction_logs", note: "async, batched", live: true },
+    { label: "Drift scheduler", note: "PSI + KS vs baseline", live: true },
+    { label: "Alerts & rollback", note: "Slack / Discord / auto", live: true },
   ];
   return (
     <ol className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

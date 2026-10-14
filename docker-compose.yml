@@ -25,8 +25,9 @@ services:
       retries: 10
 
   minio:
-    # minio/minio is no longer published on Docker Hub; Chainguard ships a free build (latest tag only).
-    image: chainguard/minio:latest
+    # minio/minio is no longer published on Docker Hub; Chainguard ships a free
+    # build with only a "latest" tag, so pin the exact image by digest.
+    image: chainguard/minio@sha256:f74600a1a46330cdbda1ef760d17a96bd6e0f4a6f0a2c49792ca3ee7e4c6fa18
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -69,6 +70,11 @@ services:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
       ALERT_COOLDOWN: ${ALERT_COOLDOWN:-30m}
+      API_KEY: ${API_KEY:-}
+      DRIFT_INTERVAL: ${DRIFT_INTERVAL:-1m}
+      DRIFT_WINDOW: ${DRIFT_WINDOW:-15m}
+      DRIFT_MIN_SAMPLES: ${DRIFT_MIN_SAMPLES:-100}
+      AUTO_ROLLBACK: ${AUTO_ROLLBACK:-true}
     ports: ["8080:8080"]
     depends_on:
       postgres: {condition: service_healthy}
@@ -76,14 +82,39 @@ services:
       ml-service: {condition: service_healthy}
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        GO_API_URL: http://server:8080
-        ML_SERVICE_URL: http://ml-service:8000
+    build: ./frontend
+    environment:
+      GO_API_URL: http://server:8080
+      ML_SERVICE_URL: http://ml-service:8000
+      # Server-side only: the dashboard's /go/* proxy attaches it, the browser never sees it.
+      DRIFTLINE_API_KEY: ${API_KEY:-}
     ports: ["3000:3000"]
     depends_on: [server, ml-service]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    ports: ["9090:9090"]
+    depends_on: [server, ml-service]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"        # read-only viewing without login, local use
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/driftline.json
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
 
 volumes:
   pgdata:
   miniodata:
+  promdata:
+  grafanadata:

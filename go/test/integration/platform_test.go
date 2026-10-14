@@ -42,6 +42,7 @@ func repoRoot() string {
 
 type env struct {
 	pool      *pgxpool.Pool
+	store     *storage.MinIOStore
 	registry  *registry.Service
 	deploy    *deployment.Service
 	predict   *prediction.Service
@@ -87,6 +88,7 @@ func setup(t *testing.T) env {
 
 	return env{
 		pool:      pool,
+		store:     store,
 		registry:  registry.NewService(regRepo, store, log),
 		deploy:    dep,
 		predict:   prediction.NewService(router, ml, logs, log),
@@ -111,6 +113,26 @@ func register(t *testing.T, e env, model, version string) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// cleanup removes everything the test created so the dashboard never shows it.
+// deployments reference versions with ON DELETE RESTRICT, so they go first;
+// deleting the model cascades to versions, prediction logs and drift reports.
+func cleanup(t *testing.T, e env, model string) {
+	ctx := context.Background()
+	_, _ = e.ml.UnloadModel(ctx, model, "v1")
+	_, _ = e.ml.UnloadModel(ctx, model, "v2")
+	if _, err := e.pool.Exec(ctx, `
+		DELETE FROM deployments WHERE model_version_id IN (
+			SELECT v.id FROM model_versions v JOIN models m ON m.id = v.model_id WHERE m.name = $1)`, model); err != nil {
+		t.Errorf("cleanup deployments: %v", err)
+	}
+	if _, err := e.pool.Exec(ctx, `DELETE FROM models WHERE name = $1`, model); err != nil {
+		t.Errorf("cleanup model: %v", err)
+	}
+	for _, v := range []string{"v1", "v2"} {
+		_ = e.store.DeleteModelArtifact(ctx, storage.ArtifactKey(model, v))
 	}
 }
 
@@ -142,6 +164,7 @@ func TestPlatformEndToEnd(t *testing.T) {
 	if _, err := e.registry.CreateModel(ctx, registry.CreateModelInput{Name: model}); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { cleanup(t, e, model) })
 	register(t, e, model, "v1")
 	register(t, e, model, "v2")
 

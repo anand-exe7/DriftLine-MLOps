@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: driftline-server      # Go control plane: proxy, deployments, drift, HTTP
+    static_configs:
+      - targets: ["server:8080"]
+  - job_name: ml-service            # Python inference: per-model counts + inference latency
+    static_configs:
+      - targets: ["ml-service:8000"]

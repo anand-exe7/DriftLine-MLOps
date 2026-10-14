@@ -27,6 +27,7 @@ func NewHandler(svc *Service, maxUploadBytes int64) *Handler {
 //	POST /models                                      create a model
 //	GET  /models                                      list models
 //	GET  /models/{name}                               get a model
+//	DELETE /models/{name}                             delete (refused while deployed)
 //	POST /models/{name}/versions                      upload a version (multipart)
 //	GET  /models/{name}/versions                      list versions
 //	GET  /models/{name}/versions/{version}            get a version
@@ -38,6 +39,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Get("/", h.listModels)
 		r.Route("/{name}", func(r chi.Router) {
 			r.Get("/", h.getModel)
+			r.Delete("/", h.deleteModel)
 			r.Post("/versions", h.registerVersion)
 			r.Get("/versions", h.listVersions)
 			r.Get("/versions/{version}", h.getVersion)
@@ -77,6 +79,14 @@ func (h *Handler) getModel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusOK, m)
+}
+
+func (h *Handler) deleteModel(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DeleteModel(r.Context(), chi.URLParam(r, "name")); err != nil {
+		writeErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // registerVersion expects multipart/form-data with:

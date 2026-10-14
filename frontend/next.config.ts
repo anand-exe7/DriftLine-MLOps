@@ -1,11 +1,9 @@
 import type { NextConfig } from "next";
 
-// The browser only ever talks to this Next.js origin. These rewrites proxy to
-// the backends, so there is no CORS setup and no backend URL baked into the JS.
-//   /go/*  -> Go control plane   (registry, alerts, healthz)
-//   /ml/*  -> Python ml-service  (health, models, metrics, predict)
-const GO_URL = process.env.GO_API_URL ?? "http://localhost:8080";
-const ML_URL = process.env.ML_SERVICE_URL ?? "http://localhost:8000";
+// The browser only ever talks to this Next.js origin. /go/* and /ml/* are
+// proxied by route handlers (src/app/go, src/app/ml) that read GO_API_URL,
+// ML_SERVICE_URL and DRIFTLINE_API_KEY at runtime, so one image works in any
+// environment and the API key stays on the server.
 
 const nextConfig: NextConfig = {
   // Every page here is a live client-side dashboard polling the backends, so
@@ -19,12 +17,6 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
-  },
-  async rewrites() {
-    return [
-      { source: "/go/:path*", destination: `${GO_URL}/:path*` },
-      { source: "/ml/:path*", destination: `${ML_URL}/:path*` },
-    ];
   },
 };
 

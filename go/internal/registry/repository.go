@@ -25,6 +25,9 @@ type Repository interface {
 	// SetStage moves a version to stage. Promoting to production archives the
 	// model's current production version in the same transaction.
 	SetStage(ctx context.Context, modelName, version string, stage models.Stage) (models.ModelVersion, error)
+	// DeleteModel removes a model and everything under it, refusing while any
+	// of its versions has a running deployment. Returns the deleted artifact keys.
+	DeleteModel(ctx context.Context, name string) ([]string, error)
 }
 
 type PostgresRepository struct {
@@ -169,6 +172,50 @@ func (r *PostgresRepository) SetStage(ctx context.Context, modelName, version st
 		return models.ModelVersion{}, mapErr(err, what)
 	}
 	return v, mapErr(tx.Commit(ctx), what)
+}
+
+func (r *PostgresRepository) DeleteModel(ctx context.Context, name string) ([]string, error) {
+	what := "delete model " + name
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, mapErr(err, what)
+	}
+	defer tx.Rollback(ctx)
+
+	var modelID string
+	if err := tx.QueryRow(ctx, `SELECT id FROM models WHERE name = $1 FOR UPDATE`, name).Scan(&modelID); err != nil {
+		return nil, mapErr(err, what)
+	}
+
+	var running int
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FROM deployments d JOIN model_versions v ON v.id = d.model_version_id
+		WHERE v.model_id = $1 AND d.status = 'running'`, modelID).Scan(&running); err != nil {
+		return nil, mapErr(err, what)
+	}
+	if running > 0 {
+		return nil, fmt.Errorf("%s: %d running deployment(s); stop them first: %w", what, running, ErrConflict)
+	}
+
+	rows, err := tx.Query(ctx, `SELECT artifact_key FROM model_versions WHERE model_id = $1`, modelID)
+	if err != nil {
+		return nil, mapErr(err, what)
+	}
+	keys, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, mapErr(err, what)
+	}
+
+	// Deployment history references versions with ON DELETE RESTRICT; the rest
+	// (versions, prediction logs, drift reports, alerts) cascades from the model.
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM deployments WHERE model_version_id IN (SELECT id FROM model_versions WHERE model_id = $1)`, modelID); err != nil {
+		return nil, mapErr(err, what)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM models WHERE id = $1`, modelID); err != nil {
+		return nil, mapErr(err, what)
+	}
+	return keys, mapErr(tx.Commit(ctx), what)
 }
 
 func nullableJSON(b []byte) any {

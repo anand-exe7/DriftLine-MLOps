@@ -18,70 +18,79 @@ const COMPONENTS: { name: string; where: string; status: Status; what: string; w
     name: "Model Registry",
     where: "go/internal/registry",
     status: "live",
-    what: "REST API to create models, upload versions, promote them through staging → production, and download artifacts.",
-    why: "One source of truth for what is deployed. Uploads stream to MinIO while hashing; if the DB write fails, the upload is deleted, so storage and database never disagree.",
+    what: "REST API to create models, upload versions, move them through stages, and download artifacts.",
+    why: "One source of truth for what exists. Uploads stream to MinIO while hashing; if the DB write fails the upload is deleted, so storage and database never disagree.",
   },
   {
-    name: "Artifact storage",
-    where: "go/internal/storage · MinIO",
+    name: "Deployment Manager",
+    where: "go/internal/deployment",
     status: "live",
-    what: "S3-compatible bucket holding model.onnx + feature_schema.json under {model}/{version}/.",
-    why: "Model files are large binaries that don't belong in Postgres. Both the Go registry and ml-service use the same key layout.",
+    what: "Deploys a version as the primary (blue/green) or as a canary with N% of traffic, changes the split, promotes, stops and rolls back. Warms the model in ml-service before it gets traffic.",
+    why: "Traffic shares are updated in one transaction so they always sum to 100%, and a per-model lock stops two releases racing each other.",
+  },
+  {
+    name: "Prediction Proxy",
+    where: "go/internal/prediction",
+    status: "live",
+    what: "The public POST /predict/{model} endpoint. Picks primary or canary by weight, calls ml-service over gRPC, and logs every request.",
+    why: "A shared atomic counter makes a 90/10 split exact on every 100 requests. Logs go through a bounded buffer and are written in batches with COPY, so the database never slows a prediction down.",
   },
   {
     name: "ml-service",
     where: "ml-service/",
     status: "live",
-    what: "Python gRPC server running ONNX Runtime. Validates features against the schema, caches one inference session per version, and exports Prometheus metrics.",
-    why: "gRPC + protobuf gives a typed, fast contract between Go and Python on the hottest path. If a version isn't on disk, the service pulls it from MinIO on first use.",
+    what: "Python gRPC server running ONNX Runtime. Validates features against the schema, caches one inference session per version, loads/unloads on demand, exports Prometheus metrics.",
+    why: "gRPC + protobuf gives a typed, fast contract between Go and Python on the hottest path. Versions not on disk are pulled from MinIO on first use.",
   },
   {
-    name: "Alert service",
-    where: "go/internal/alert",
-    status: "live",
-    what: "Sends drift alerts to Slack and Discord in parallel, with retries, a per-version cooldown, and a record of every attempt.",
-    why: "A Go interface (AlertNotifier) means adding email or PagerDuty is a new type, not a rewrite.",
-  },
-  {
-    name: "Prediction proxy",
-    where: "go/internal/prediction",
-    status: "building",
-    what: "Public /predict endpoint that routes traffic between versions (canary splits) over gRPC and logs every request.",
-    why: "Lets a new version take 10% of traffic before it takes 100%.",
-  },
-  {
-    name: "Drift scheduler",
+    name: "Drift Scheduler",
     where: "go/internal/drift",
-    status: "building",
-    what: "Periodically compares logged live inputs against each version's baseline bins using PSI / KS-test.",
-    why: "Catches the world changing under the model before accuracy visibly drops.",
+    status: "live",
+    what: "Every minute, compares the recent window of logged inputs with each serving version's training deciles: PSI per feature plus a binned Kolmogorov-Smirnov test.",
+    why: "Catches the world changing under the model before accuracy visibly drops. Versions are checked concurrently through a bounded worker pool.",
   },
   {
-    name: "Rollback manager",
+    name: "Rollback Manager",
     where: "go/internal/rollback",
-    status: "building",
-    what: "Re-promotes the previous good version when drift or errors cross a threshold.",
-    why: "Closes the loop: detect → alert → recover without a human awake at 3am.",
+    status: "live",
+    what: "Rolls a canary back automatically when its error rate or predicted-default rate diverges from the primary's, or when it drifts while the primary doesn't. Manual rollback restores the previous primary.",
+    why: "Drift on the primary itself is not rolled back (an older model sees the same new data); it triggers a retraining recommendation instead.",
+  },
+  {
+    name: "Alerts & observability",
+    where: "go/internal/alert · infra/",
+    status: "live",
+    what: "Slack and Discord notifications for drift, rollbacks and retraining advice, every attempt recorded. Prometheus scrapes both services; Grafana ships with a Driftline dashboard.",
+    why: "A Go interface (AlertNotifier) makes channels pluggable; metrics are labelled by route pattern and model so cardinality stays bounded.",
   },
 ];
 
 const LIFECYCLE = [
   ["Train", "Python script trains both models and writes model.onnx, feature_schema.json, metrics and baseline_stats.json."],
   ["Register", "Upload the files to the registry. The Go service stores the model in MinIO and the metadata in Postgres."],
-  ["Promote", "Move a version to production. The previous production version is archived atomically."],
+  ["Release", "Deploy the new version as a canary with a slice of traffic, watch it, then promote it to primary."],
   ["Serve", "ml-service loads the ONNX file (from disk or MinIO) and answers predictions over gRPC in milliseconds."],
   ["Monitor", "Traffic and latency are exported as metrics; live inputs are compared against the training baseline."],
-  ["Alert & recover", "Drift triggers Slack/Discord alerts; rollback can re-promote the last good version."],
+  ["Alert & recover", "Drift triggers alerts and a retraining recommendation; unhealthy canaries are rolled back automatically. scripts/retrain.py closes the loop."],
 ];
 
 const API: [string, string, string][] = [
-  ["GET", "/healthz", "Postgres + MinIO health"],
+  ["GET", "/healthz", "Postgres, MinIO and ml-service health"],
+  ["GET", "/metrics", "Prometheus metrics"],
   ["POST", "/api/v1/models", "Create a model"],
   ["GET", "/api/v1/models", "List models"],
   ["POST", "/api/v1/models/{name}/versions", "Upload a version (multipart: version, model, feature_schema, metrics?, baseline_stats?)"],
   ["GET", "/api/v1/models/{name}/versions", "List versions with metrics + baseline"],
   ["POST", "/api/v1/models/{name}/versions/{v}/promote", '{"stage": "staging" | "production" | "archived"}'],
   ["GET", "/api/v1/models/{name}/versions/{v}/artifact", "Download model.onnx"],
+  ["POST", "/api/v1/predict/{model}", '{"features": {...}} → routed prediction (primary or canary), logged'],
+  ["GET", "/api/v1/predict/{model}/routes", "Current routing table"],
+  ["POST", "/api/v1/deployments", '{"model","version","traffic_percent"}: primary at 100, canary below'],
+  ["PATCH", "/api/v1/deployments/{id}/traffic", "Change a canary's share"],
+  ["POST", "/api/v1/deployments/{id}/promote", "Canary → primary"],
+  ["POST", "/api/v1/deployments/rollback", '{"model"}: undo the last release'],
+  ["GET", "/api/v1/drift/reports", "Drift reports (PSI/KS per feature)"],
+  ["POST", "/api/v1/drift/run", "Run a drift check now"],
   ["GET", "/api/v1/alerts", "Recent alert attempts"],
   ["POST", "/api/v1/alerts/test", "Send a sample alert to every channel"],
   ["gRPC", "PredictionService.Predict", "ml-service :50051: model_name, model_version, features map → probabilities"],
@@ -127,7 +136,7 @@ export default function GuidePage() {
         subtitle="Every component, what it does, why it is built that way, and how the pieces fit together."
       />
 
-      <Card title="Architecture" subtitle="Solid boxes are running today; dashed ones are in progress" className="mb-6">
+      <Card title="Architecture" subtitle="Every component below is running" className="mb-6">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-2">
           <Box title="Next.js dashboard" sub="this app · REST/JSON" />
           <ArrowDown size={16} className="text-ink-3" />
@@ -136,10 +145,10 @@ export default function GuidePage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <Box title="Model Registry" sub="versions & stages" />
               <Box title="Alert Service" sub="Slack · Discord" />
-              <Box title="Prediction Proxy" sub="canary routing" dashed />
-              <Box title="Drift Scheduler" sub="PSI · KS-test" dashed />
-              <Box title="Rollback Manager" sub="auto-recover" dashed />
-              <Box title="Deployment Mgr" sub="containers" dashed />
+              <Box title="Prediction Proxy" sub="canary routing" />
+              <Box title="Drift Scheduler" sub="PSI · KS-test" />
+              <Box title="Rollback Manager" sub="auto-recover" />
+              <Box title="Deployment Manager" sub="primary + canary" />
             </div>
           </div>
           <div className="grid w-full grid-cols-3 gap-2">
@@ -157,6 +166,10 @@ export default function GuidePage() {
               </span>
               <Box title="ml-service" sub="ONNX Runtime" />
             </div>
+          </div>
+          <div className="mt-1 grid w-full grid-cols-2 gap-2 sm:w-2/3">
+            <Box title="Prometheus" sub="scrapes both services" />
+            <Box title="Grafana :3001" sub="Driftline dashboard" />
           </div>
           <p className="mt-2 max-w-xl text-center text-xs text-ink-3">
             ml-service pulls model files straight from MinIO, so registering a version in the dashboard is enough for it to be servable.

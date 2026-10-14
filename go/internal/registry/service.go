@@ -198,6 +198,23 @@ func (s *Service) Promote(ctx context.Context, modelName, version string, stage 
 	return v, nil
 }
 
+// DeleteModel removes a model, its versions and their history, then deletes
+// the artifacts from object storage (after the DB commit, so a storage error
+// can only leave orphaned files, never a registry row without its file).
+func (s *Service) DeleteModel(ctx context.Context, name string) error {
+	keys, err := s.repo.DeleteModel(ctx, name)
+	if err != nil {
+		return err
+	}
+	for _, k := range keys {
+		if err := s.store.DeleteModelArtifact(context.WithoutCancel(ctx), k); err != nil {
+			s.log.WarnContext(ctx, "delete model: artifact cleanup failed", "key", k, "err", err)
+		}
+	}
+	s.log.InfoContext(ctx, "model deleted", "model", name, "versions", len(keys))
+	return nil
+}
+
 // DownloadArtifact returns the version metadata and a stream of its .onnx file.
 func (s *Service) DownloadArtifact(ctx context.Context, modelName, version string) (models.ModelVersion, io.ReadCloser, error) {
 	v, err := s.repo.GetVersion(ctx, modelName, version)

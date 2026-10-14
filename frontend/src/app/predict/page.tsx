@@ -13,17 +13,21 @@ import {
   cx,
   modelColor,
 } from "@/components/ui";
-import { ml, type ModelVersion, type PredictResult } from "@/lib/api";
+import { go, ml, type ModelVersion, type PredictResult } from "@/lib/api";
 import { CATEGORICAL, FLAGS, LOAN_TERMS, NUMERIC_FIELDS, TEST_APPLICANTS, encode, medianApplicant, rangeFor, type RawApplicant } from "@/lib/features";
 import { useRegistry } from "@/lib/hooks";
 
-type Outcome = { key: string; model: string; version: string; result?: PredictResult; error?: string; at: number };
+type Outcome = { key: string; model: string; version: string; role?: string; result?: PredictResult; error?: string; at: number };
+type Mode = "proxy" | "direct";
 type HistoryRow = { at: number; source: string; outcomes: Outcome[]; actual?: boolean };
 
 export default function PredictPage() {
   const registry = useRegistry(30000);
   const entries = useMemo(() => registry.data ?? [], [registry.data]);
 
+  // proxy: through the Go prediction proxy (canary routing, logged, feeds drift)
+  // direct: straight to ml-service for one specific version (nothing is logged)
+  const [mode, setMode] = useState<Mode>("proxy");
   // Which model/versions to score against: default = every production version.
   const [picked, setPicked] = useState<Record<string, string>>({});
   const targets: ModelVersion[] = useMemo(() => {
@@ -57,12 +61,14 @@ export default function PredictPage() {
   const [showPayload, setShowPayload] = useState(false);
   const seq = useRef(0);
   // Registry polling returns fresh objects; key the effect on identity, not reference.
-  const targetKey = targets.map((t) => t.id).join(",");
+  const targetKey = mode + ":" + targets.map((t) => t.id).join(",");
   const targetsRef = useRef(targets);
   const sourceRef = useRef(source);
+  const modeRef = useRef(mode);
   useEffect(() => {
     targetsRef.current = targets;
     sourceRef.current = source;
+    modeRef.current = mode;
   });
 
   // Re-score (debounced) whenever the applicant or the targets change.
@@ -74,9 +80,23 @@ export default function PredictPage() {
     const timer = setTimeout(async () => {
       const results = await Promise.all(
         targets.map(async (v): Promise<Outcome> => {
+          const features = encode(raw, v.feature_schema.features);
+          if (modeRef.current === "proxy") {
+            const key = v.model_name;
+            try {
+              const r = await go.predict(v.model_name, features);
+              const result: PredictResult = {
+                prediction: r.prediction, probabilities: r.probabilities, model_version_used: r.version,
+                latency_ms: r.inference_ms, request_id: r.request_id, status_code: 0, error_message: "",
+              };
+              return { key, model: v.model_name, version: r.version, role: r.role, result, at: Date.now() };
+            } catch (e) {
+              return { key, model: v.model_name, version: "?", error: e instanceof Error ? e.message : String(e), at: Date.now() };
+            }
+          }
           const key = `${v.model_name}/${v.version}`;
           try {
-            const result = await ml.predict(v.model_name, v.version, encode(raw, v.feature_schema.features), `lab-${Date.now()}`);
+            const result = await ml.predict(v.model_name, v.version, features, `lab-${Date.now()}`);
             return { key, model: v.model_name, version: v.version, result, at: Date.now() };
           } catch (e) {
             return { key, model: v.model_name, version: v.version, error: e instanceof Error ? e.message : String(e), at: Date.now() };
@@ -109,8 +129,9 @@ export default function PredictPage() {
       <Explainer title="What happens when I change a value?">
         <p>
           The form holds the 16 fields a loan officer sees. The browser one-hot encodes them into the model&apos;s 24 inputs
-          (exactly as training did), and sends a request to <b>ml-service</b>, which runs the ONNX model with ONNX Runtime and
-          returns per-class probabilities plus the inference latency.
+          (exactly as training did). In <b>live routing</b> mode the request goes through the Go prediction proxy, exactly like
+          production traffic: it is routed between the primary and any canary, logged, and later checked for drift. In{" "}
+          <b>pinned version</b> mode it goes straight to ml-service for the version you pick, and nothing is logged.
         </p>
         <p>
           Load one of the <b>real test-set applicants</b> to see whether each model gets a case it has never seen right. Each
@@ -128,7 +149,25 @@ export default function PredictPage() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-5">
           <div className="space-y-6 xl:col-span-3">
-            <Card title="Models to score" subtitle="Defaults to each model's production version">
+            <Card
+              title="Models to score"
+              subtitle={mode === "proxy" ? "Each request is routed by Driftline (primary / canary) and logged" : "Pick the exact version per model; requests bypass routing and logging"}
+              actions={
+                <div className="flex rounded-lg border border-line-strong p-0.5 text-xs" role="tablist">
+                  {(["proxy", "direct"] as const).map((m) => (
+                    <button
+                      key={m}
+                      role="tab"
+                      aria-selected={mode === m}
+                      onClick={() => setMode(m)}
+                      className={cx("rounded-md px-2.5 py-1 font-medium", mode === m ? "bg-accent text-white" : "text-ink-2 hover:text-ink")}
+                    >
+                      {m === "proxy" ? "Live routing" : "Pinned version"}
+                    </button>
+                  ))}
+                </div>
+              }
+            >
               <div className="grid gap-3 sm:grid-cols-2">
                 {entries.map((e) => {
                   const value = picked[e.model.name] ?? e.production?.version ?? "off";
@@ -136,18 +175,29 @@ export default function PredictPage() {
                     <label key={e.model.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2">
                       <span className="h-6 w-1 rounded-full" style={{ background: modelColor(e.model.name) }} />
                       <span className="flex-1 truncate font-mono text-sm text-ink">{e.model.name}</span>
-                      <select
-                        value={value}
-                        onChange={(ev) => setPicked((p) => ({ ...p, [e.model.name]: ev.target.value }))}
-                        className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink"
-                      >
-                        <option value="off">off</option>
-                        {e.versions.filter((v) => v.stage !== "archived").map((v) => (
-                          <option key={v.id} value={v.version}>
-                            {v.version} · {v.stage}
-                          </option>
-                        ))}
-                      </select>
+                      {mode === "proxy" ? (
+                        <select
+                          value={value === "off" ? "off" : "on"}
+                          onChange={(ev) => setPicked((p) => ({ ...p, [e.model.name]: ev.target.value === "off" ? "off" : (e.production?.version ?? e.versions[0]?.version ?? "off") }))}
+                          className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink"
+                        >
+                          <option value="on">routed</option>
+                          <option value="off">off</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={value}
+                          onChange={(ev) => setPicked((p) => ({ ...p, [e.model.name]: ev.target.value }))}
+                          className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink"
+                        >
+                          <option value="off">off</option>
+                          {e.versions.filter((v) => v.stage !== "archived").map((v) => (
+                            <option key={v.id} value={v.version}>
+                              {v.version} · {v.stage}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </label>
                   );
                 })}
@@ -258,7 +308,7 @@ export default function PredictPage() {
                 ) : (
                   <div className="space-y-4">
                     {outcomes.map((o) => (
-                      <ResultRow key={o.key} o={o} actual={source.actual} stage={targets.find((t) => `${t.model_name}/${t.version}` === o.key)?.stage} />
+                      <ResultRow key={o.key} o={o} actual={source.actual} stage={o.role ? undefined : targets.find((t) => `${t.model_name}/${t.version}` === o.key)?.stage} />
                     ))}
                   </div>
                 )}
@@ -350,6 +400,11 @@ function ResultRow({ o, actual, stage }: { o: Outcome; actual?: boolean; stage?:
           {o.model} <span className="text-ink-3">{o.version}</span>
         </span>
         {stage && <StageBadge stage={stage} />}
+        {o.role && (
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-ink-2 ring-1 ring-inset ring-line-strong">
+            routed · {o.role}
+          </span>
+        )}
       </div>
       <div className="mt-3 flex items-end justify-between gap-3">
         <div>

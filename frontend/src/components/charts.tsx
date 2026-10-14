@@ -7,7 +7,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -231,6 +235,78 @@ export function LatencyHistogram({ buckets, color }: { buckets: { le: number; co
         <Tooltip cursor={{ fill: t["--line"], opacity: 0.4 }} content={<ChartTooltip format={(v) => `${v} requests`} />} />
         <Bar dataKey="count" name="requests" fill={resolveColor(t, color)} radius={[4, 4, 0, 0]} />
       </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** PSI severity band; status colors always ship with a text label. */
+export function psiLevel(psi: number): { label: string; color: string } {
+  if (psi >= 0.25) return { label: "significant", color: "var(--critical)" };
+  if (psi >= 0.1) return { label: "moderate", color: "var(--serious)" };
+  return { label: "stable", color: "var(--good)" };
+}
+
+const STATUS_HEX: Record<string, string> = {
+  "var(--critical)": "#d03b3b",
+  "var(--serious)": "#ec835a",
+  "var(--good)": "#0ca30c",
+};
+
+/** Horizontal PSI bars per feature, colored by severity band, with threshold lines. */
+export function FeaturePSIChart({ scores, top = 12 }: { scores: Record<string, { psi: number }>; top?: number }) {
+  const t = useTheme();
+  const rows = Object.entries(scores)
+    .map(([feature, s]) => ({ feature: feature.replace(/_/g, " "), psi: s.psi }))
+    .sort((a, b) => b.psi - a.psi)
+    .slice(0, top);
+  const max = Math.max(0.3, ...rows.map((r) => r.psi)) * 1.1;
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(160, rows.length * 24 + 30)}>
+      <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }} barCategoryGap={3}>
+        <CartesianGrid horizontal={false} stroke={t["--line"]} />
+        <XAxis type="number" domain={[0, max]} {...axisProps(t)} tickFormatter={(v) => v.toFixed(2)} />
+        <YAxis type="category" dataKey="feature" width={160} {...axisProps(t)} axisLine={false} />
+        <ReferenceLine x={0.1} stroke={STATUS_HEX["var(--serious)"]} strokeDasharray="4 3" />
+        <ReferenceLine x={0.25} stroke={STATUS_HEX["var(--critical)"]} strokeDasharray="4 3" />
+        <Tooltip cursor={{ fill: t["--line"], opacity: 0.4 }} content={<ChartTooltip format={(v) => `${v.toFixed(3)} (${psiLevel(v).label})`} />} />
+        <Bar dataKey="psi" name="PSI" radius={[0, 4, 4, 0]} maxBarSize={14}>
+          {rows.map((r) => (
+            <Cell key={r.feature} fill={STATUS_HEX[psiLevel(r.psi).color]} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Overall PSI over time, one line per model version. */
+export function PSITimeline({ data, series }: { data: Record<string, number>[]; series: { key: string; color: string }[] }) {
+  const t = useTheme();
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+        <CartesianGrid vertical={false} stroke={t["--line"]} />
+        <XAxis
+          dataKey="t"
+          type="number"
+          scale="time"
+          domain={["dataMin", "dataMax"]}
+          tickFormatter={(v) => new Date(v).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+          {...axisProps(t)}
+        />
+        <YAxis tickFormatter={(v) => v.toFixed(2)} {...axisProps(t)} axisLine={false} />
+        <ReferenceLine y={0.1} stroke={STATUS_HEX["var(--serious)"]} strokeDasharray="4 3" label={{ value: "0.1 trigger", fill: t["--ink-3"], fontSize: 10, position: "insideTopRight" }} />
+        <Tooltip
+          content={<ChartTooltip format={(v) => v.toFixed(3)} />}
+          labelFormatter={(v) => new Date(Number(v)).toLocaleString()}
+          cursor={{ stroke: t["--line-strong"] }}
+        />
+        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, color: t["--ink-2"] }} />
+        {series.map((s) => (
+          <Line key={s.key} type="monotone" dataKey={s.key} name={s.key} stroke={resolveColor(t, s.color)} strokeWidth={2}
+            dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls isAnimationActive={false} />
+        ))}
+      </LineChart>
     </ResponsiveContainer>
   );
 }
