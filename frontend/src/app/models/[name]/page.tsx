@@ -138,9 +138,9 @@ export default function ModelDetailPage() {
                               Promote to prod
                             </Button>
                           )}
-                          {v.stage === "registered" && (
+                          {(v.stage === "registered" || v.stage === "archived") && (
                             <Button variant="ghost" className="px-2 py-1 text-xs" loading={busy === `${v.version}:staging`} onClick={() => promote(v, "staging")}>
-                              Stage
+                              {v.stage === "archived" ? "Unarchive" : "Stage"}
                             </Button>
                           )}
                           {v.stage !== "archived" && v.stage !== "production" && (

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-driftline}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driftline}
       POSTGRES_DB: ${POSTGRES_DB:-driftline}
-    ports: ["5432:5432"]
+    ports: ["5434:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -75,7 +75,7 @@ services:
       DRIFT_WINDOW: ${DRIFT_WINDOW:-15m}
       DRIFT_MIN_SAMPLES: ${DRIFT_MIN_SAMPLES:-100}
       AUTO_ROLLBACK: ${AUTO_ROLLBACK:-true}
-    ports: ["8080:8080"]
+    ports: ["8081:8080"]
     depends_on:
       postgres: {condition: service_healthy}
       minio: {condition: service_healthy}

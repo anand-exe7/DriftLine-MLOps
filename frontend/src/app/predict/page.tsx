@@ -34,16 +34,13 @@ import {
   cx,
   modelColor,
 } from "@/components/ui";
-import { go, ml, type ModelVersion, type PredictResult } from "@/lib/api";
+import { go, ml, type PredictResult } from "@/lib/api";
 import {
   CATEGORICAL,
   FLAGS,
   LOAN_TERMS,
-  NUMERIC_FIELDS,
-  TEST_APPLICANTS,
   encode,
   medianApplicant,
-  rangeFor,
   type RawApplicant,
 } from "@/lib/features";
 import { useRegistry } from "@/lib/hooks";
@@ -145,7 +142,8 @@ export default function PredictPage() {
   // Sync to median initially
   useEffect(() => {
     if (activePreset === "median") {
-      setRaw(median);
+      const t = setTimeout(() => setRaw(median), 0);
+      return () => clearTimeout(t);
     }
   }, [median, activePreset]);
 
@@ -156,9 +154,8 @@ export default function PredictPage() {
     const v = entry.production;
 
     const id = ++seq.current;
-    setPending(true);
-
     const timer = setTimeout(async () => {
+      setPending(true);
       const features = encode(raw, v.feature_schema.features);
       if (mode === "proxy") {
         try {

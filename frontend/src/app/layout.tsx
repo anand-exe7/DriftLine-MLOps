@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   description: "Model registry, live canary routing, drift detection and monitoring for Driftline",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${poppins.variable} ${mono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>

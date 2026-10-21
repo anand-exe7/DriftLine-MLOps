@@ -82,7 +82,14 @@ export default function DeploymentsPage() {
       <ErrorNote error={deployments.error} what="the deployment manager" />
       {actionError && <ErrorNote error={new Error(actionError)} what="that action" />}
 
-      <DeployForm registry={registry.data ?? []} onDone={() => { deployments.refresh(); registry.refresh(); }} />
+      <DeployForm
+        registry={registry.data ?? []}
+        runningDeployments={all}
+        onDone={() => {
+          deployments.refresh();
+          registry.refresh();
+        }}
+      />
 
       {!deployments.data && !deployments.error ? (
         <Skeleton className="h-64" />
@@ -290,23 +297,69 @@ function VersionPanel({ d, s }: { d: Deployment; s?: VersionStats }) {
   );
 }
 
-function DeployForm({ registry, onDone }: { registry: RegistryEntry[]; onDone: () => void }) {
+function DeployForm({
+  registry,
+  runningDeployments = [],
+  onDone,
+}: {
+  registry: RegistryEntry[];
+  runningDeployments?: Deployment[];
+  onDone: () => void;
+}) {
   const [model, setModel] = useState("");
   const [version, setVersion] = useState("");
-  const [traffic, setTraffic] = useState(100);
+  const [traffic, setTraffic] = useState(20);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>();
 
   const entry = registry.find((e) => e.model.name === model) ?? registry[0];
-  const versions = (entry?.versions ?? []).filter((v) => v.stage !== "archived");
   const chosenModel = entry?.model.name ?? "";
-  const chosenVersion = versions.find((v) => v.version === version)?.version ?? versions[0]?.version ?? "";
+  const allVersions = entry?.versions ?? [];
+
+  // Current running deployments for chosen model
+  const runningForModel = runningDeployments.filter((d) => d.model_name === chosenModel && d.status === "running");
+  const runningPrimary = runningForModel.find((d) => d.role === "primary");
+  const runningCanary = runningForModel.find((d) => d.role === "canary");
+
+  // Default to candidate canary version (the one that is NOT the primary) if available
+  const defaultVersion =
+    allVersions.find((v) => v.version !== runningPrimary?.version)?.version ?? allVersions[0]?.version ?? "";
+  const chosenVersion = version || defaultVersion;
+  const chosenVersionObj = allVersions.find((v) => v.version === chosenVersion);
+
+  const isPrimary = runningPrimary?.version === chosenVersion;
+  const isCanary = runningCanary?.version === chosenVersion;
+  const anotherCanaryRunning = runningCanary && !isCanary && traffic < 100;
+
+  // Validation rules
+  let validationError = "";
+  if (isPrimary && traffic < 100) {
+    validationError = `${chosenVersion} is currently your Primary. To test a Canary, select a different version.`;
+  } else if (isPrimary && traffic === 100) {
+    validationError = `${chosenVersion} is already serving 100% of production traffic.`;
+  } else if (anotherCanaryRunning) {
+    validationError = `Canary ${runningCanary?.version} is already running. Promote or stop it before adding another canary.`;
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (validationError && !isCanary) return;
     setBusy(true);
     setMsg(undefined);
     try {
+      // If user selected the already running canary and wants to adjust traffic:
+      if (isCanary && traffic < 100 && runningCanary) {
+        const d = await go.setTraffic(runningCanary.id, traffic);
+        setMsg({ ok: true, text: `Updated ${d.model_name}/${d.version} canary traffic to ${d.traffic_percent}%` });
+        onDone();
+        return;
+      }
+
+      // If version is archived, auto-unarchive to staging first so user never hits archived error
+      if (chosenVersionObj && chosenVersionObj.stage === "archived") {
+        await go.promote(chosenModel, chosenVersion, "staging");
+      }
+
       const d = await go.deploy(chosenModel, chosenVersion, traffic);
       setMsg({ ok: true, text: `${d.model_name}/${d.version} is now ${d.role} at ${d.traffic_percent}%` });
       onDone();
@@ -319,34 +372,84 @@ function DeployForm({ registry, onDone }: { registry: RegistryEntry[]; onDone: (
 
   if (registry.length === 0) return null;
   return (
-    <Card title="Deploy a version" subtitle="100% replaces the primary (blue/green). Less than 100% starts a canary next to the primary." className="mb-6">
+    <Card
+      title="Deploy a version"
+      subtitle="100% replaces the primary. Less than 100% starts or adjusts a canary alongside the primary."
+      className="mb-6"
+    >
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_auto] lg:items-end">
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-ink-2">Model</span>
-          <select value={chosenModel} onChange={(e) => { setModel(e.target.value); setVersion(""); }} className="w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 font-mono text-sm text-ink">
-            {registry.map((e) => <option key={e.model.id} value={e.model.name}>{e.model.name}</option>)}
+          <select
+            value={chosenModel}
+            onChange={(e) => {
+              setModel(e.target.value);
+              setVersion("");
+            }}
+            className="w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 font-mono text-sm text-ink"
+          >
+            {registry.map((e) => (
+              <option key={e.model.id} value={e.model.name}>
+                {e.model.name}
+              </option>
+            ))}
           </select>
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-ink-2">Version</span>
-          <select value={chosenVersion} onChange={(e) => setVersion(e.target.value)} className="w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 font-mono text-sm text-ink">
-            {versions.map((v) => <option key={v.id} value={v.version}>{v.version} · {v.stage}</option>)}
+          <select
+            value={chosenVersion}
+            onChange={(e) => setVersion(e.target.value)}
+            className="w-full rounded-lg border border-line-strong bg-surface px-2.5 py-2 font-mono text-sm text-ink"
+          >
+            {allVersions.map((v) => {
+              const roleTag =
+                runningPrimary?.version === v.version
+                  ? " [Primary]"
+                  : runningCanary?.version === v.version
+                  ? " [Canary]"
+                  : "";
+              return (
+                <option key={v.id} value={v.version}>
+                  {v.version} · {v.stage}
+                  {roleTag}
+                </option>
+              );
+            })}
           </select>
         </label>
         <div className="text-sm">
           <div className="mb-1 flex justify-between text-xs font-medium text-ink-2">
             <span>Traffic</span>
-            <span className="tabular">{traffic === 100 ? "100% (primary)" : `${traffic}% (canary)`}</span>
+            <span className="tabular">{traffic === 100 ? "100% (Primary)" : `${traffic}% (Canary)`}</span>
           </div>
-          <input type="range" min={1} max={100} value={traffic} onChange={(e) => setTraffic(Number(e.target.value))} className="w-full accent-[var(--accent)]" />
+          <input
+            type="range"
+            min={1}
+            max={100}
+            value={traffic}
+            onChange={(e) => setTraffic(Number(e.target.value))}
+            className="w-full accent-[var(--accent)]"
+          />
         </div>
-        <Button type="submit" loading={busy} disabled={!chosenVersion}>
-          <Rocket size={14} /> Deploy
+        <Button
+          type="submit"
+          loading={busy}
+          disabled={!chosenVersion || (Boolean(validationError) && !isCanary)}
+        >
+          <Rocket size={14} /> {isCanary && traffic < 100 ? "Update Canary" : "Deploy"}
         </Button>
       </form>
-      {msg && <p className={cx("mt-3 text-sm", msg.ok ? "text-good-ink" : "text-critical")}>{msg.text}</p>}
+
+      {validationError && !isCanary && (
+        <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+          ⚠️ {validationError}
+        </p>
+      )}
+
+      {msg && <p className={cx("mt-3 text-sm font-medium", msg.ok ? "text-good-ink" : "text-critical")}>{msg.text}</p>}
       <p className="mt-3 text-xs text-ink-3">
-        The version is loaded into ml-service before it receives any traffic; if loading fails, nothing changes.
+        The target version is verified in ml-service before receiving traffic. If archived, it is automatically unarchived to staging.
       </p>
     </Card>
   );
